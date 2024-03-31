@@ -1,0 +1,5 @@
+build
+dist
+src/gdb
+src/pwndbg_gdb.egg-info
+src/gdb_tools/_vendor
