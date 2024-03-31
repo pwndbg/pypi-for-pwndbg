@@ -47,7 +47,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name="pwndbg-gdb",
-    version="14.2.0",
+    version="14.2.1",
     url="https://github.com/pwndbg/pwndbg-gdb",
 
     # When your source code is in a subdirectory under the project root, e.g.
