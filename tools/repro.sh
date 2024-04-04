@@ -12,7 +12,7 @@ python3 -m venv /tmp/venv/
 /tmp/venv/bin/pip install -U pip
 
 WHEEL_FILE=pwndbg_gdb-14.2.1-cp$PY_VER-cp$PY_VER-manylinux_2_28_x86_64.whl
-curl --output /tmp/venv/$WHEEL_FILE -L https://github.com/pwndbg/pwndbg-gdb/blob/main/pypidist/$WHEEL_FILE
+curl --output /tmp/venv/$WHEEL_FILE -L https://github.com/pwndbg/pwndbg-gdb/raw/main/pypidist/$WHEEL_FILE
 /tmp/venv/bin/pip install --force-reinstall /tmp/venv/$WHEEL_FILE
 /tmp/venv/bin/pip install git+https://github.com/pwndbg/pwndbg
 
