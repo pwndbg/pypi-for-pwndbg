@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-#docker buildx build --progress=plain -t pwndbg-gdb -f ./Dockerfile .
-#
-#exit 1
-for ver in ""39 312 311 310 38""; do
+for ver in ""38 39 312 311 310""; do
+  docker buildx build --progress=plain --target final_$ver -t pwndbg-gdb:$ver -f ./Dockerfile .
+done;
+
+for ver in ""38 39 312 311 310""; do
   rm -rf $(pwd)/src/gdb_tools/_vendor
   mkdir -p $(pwd)/src/gdb_tools/_vendor
 

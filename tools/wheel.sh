@@ -5,27 +5,28 @@ strip /gdb-source/build/gdb/gdb
 ./tools/bundle-linux.sh "/vendor" /gdb-source/build/gdb/gdb
 cp -rf /gdb-source/build/gdb/data-directory/python/gdb/* /module/
 
-rm /vendor/lib/ld-2.28.so
+for file in /vendor/lib/*; do
+  # Check if the file is a symbolic link
+  if [ -L "$file" ]; then
+    # Resolve the symlink and get the target file
+    target=$(readlink -f "$file")
+
+    # Check if the target file exists
+    if [ -e "$target" ]; then
+      rm $file
+      mv "$target" "$file"
+    fi
+  fi
+done
+
 rm /vendor/lib/ld-linux-x86-64.so.2
-
 rm /vendor/lib/libc.so*
-rm /vendor/lib/libc-2.28.so
-
 rm /vendor/lib/libdl.so*
-rm /vendor/lib/libdl-2.28.so
-
 rm /vendor/lib/libm.so*
-rm /vendor/lib/libm-2.28.so
-
 rm /vendor/lib/libpthread.so*
-rm /vendor/lib/libpthread-2.28.so
-
 rm /vendor/lib/libutil.so*
-rm /vendor/lib/libutil-2.28.so
-
 rm /vendor/lib/libstdc*
 rm /vendor/lib/libgcc_s*
-
 rm /vendor/lib/libpython*
 
 /root/.pyenv/versions/3.12.2/bin/pip install wheel
