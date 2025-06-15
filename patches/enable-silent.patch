@@ -1,0 +1,11 @@
+--- a/gdb/top.c	(revision b61f17e6951ff630bc9090b0e82ec9b551497f92)
++++ b/gdb/top.c	(date 1743903418435)
+@@ -2113,7 +2113,7 @@
+
+ /* Whether we're in quiet startup mode.  */
+
+-static bool startup_quiet;
++static bool startup_quiet = true;
+
+ /* See top.h.  */
+

@@ -8,47 +8,10 @@ import pathlib
 
 here = pathlib.Path(__file__).parent.resolve()
 
-# python setup.py bdist_wheel
-
-# class CustomInstall(install):
-#     def run(self):
-#         # Download and build GDB
-#         # Customize this part according to where GDB source is hosted, and build steps
-#         subprocess.run(["wget", "http://path/to/gdb/source.tar.gz"])
-#         subprocess.run(["tar", "-xzf", "source.tar.gz"])
-#         os.chdir("gdb-source-directory")
-#         subprocess.run(["./configure"])
-#         subprocess.run(["make"])
-#
-#         # Vendor GDB installation
-#         shutil.copytree("gdb-source-directory", "your_package/gdb")
-#
-#         # Continue with the installation
-#         install.run(self)
-#
-
-# setup(
-#     name='your_package_name',
-#     version='1.0.0',
-#     packages=find_packages(),
-#     package_data={'': ['vendor/gdb/*']},
-#     include_package_data=True,
-#     install_requires=[
-#         # list your dependencies here
-#     ],
-# )
-# setup(
-#     cmdclass = {'install': CustomInstall},
-#     install_requires = [
-#         # Include any other dependencies your package has
-#         # "gdb",
-#     ],
-# )
-
 setup(
-    name="pwndbg-gdb",
-    version="14.2.1",
-    url="https://github.com/pwndbg/pwndbg-gdb",
+    name="gdb-for-pwndbg",
+    version="16.2.0",
+    url="https://github.com/pwndbg/gdb-for-pwndbg",
 
     # When your source code is in a subdirectory under the project root, e.g.
     # `src/`, it is necessary to specify the `package_dir` argument.
@@ -65,7 +28,7 @@ setup(
     packages=find_packages(where="src"),  # Required
     include_package_data=True,
 
-    python_requires=">=3.8, <4",
+    python_requires=">=3.10, <4",
     # If there are data files included in your packages that need to be
     # installed, specify them here.
     # package_data={
@@ -75,11 +38,11 @@ setup(
     # executes the function `main` from this package when invoked:
     entry_points={
         "console_scripts": [
-            "gdb=gdb_tools.gdb:main",
+            "gdb=gdb_for_pwndbg.gdb:main",
         ],
     },
     project_urls={
-        "Bug Reports": "https://github.com/pwndbg/pwndbg/issues",
-        "Source": "https://github.com/pwndbg/pwndbg-gdb/",
+        "Bug Reports": "https://github.com/pwndbg/gdb-for-pwndbg/issues",
+        "Source": "https://github.com/pwndbg/gdb-for-pwndbg/",
     },
 )

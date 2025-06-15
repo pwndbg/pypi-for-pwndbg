@@ -1,1 +1,1 @@
-graft src/gdb_tools/_vendor/
+graft src/gdb_for_pwndbg/_vendor/
