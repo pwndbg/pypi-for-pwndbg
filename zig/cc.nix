@@ -31,7 +31,7 @@ runCommand "zig-cc-${zig.version}"
       makeWrapper "$zig/bin/zig" "$out/bin/$tool" \
         --add-flags "$tool" \
         --suffix PATH : "${lib.makeBinPath [ coreutils ]}" \
-        --run "export ZIG_GLOBAL_CACHE_DIR=\$(mktemp -d)"
+        --run "export ZIG_GLOBAL_CACHE_DIR=/tmp"
     done
 
     ln -s $out/bin/c++ $out/bin/clang++
