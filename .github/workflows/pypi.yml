@@ -12,7 +12,12 @@ jobs:
           ubuntu-24.04-arm,  # aarch64-linux
         ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
+    environment:
+      name: pypi
+      url: https://pypi.org/p/gdb-for-pwndbg
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
     - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
@@ -34,5 +39,14 @@ jobs:
     - name: build 314
       run: nix build '.#wheel.314' -o ./result314
 
-    - name: upload
-      run:
+    - name: dist
+      run: |
+        mkdir dist
+        cp ./result310/*.whl ./dist/
+        cp ./result311/*.whl ./dist/
+        cp ./result312/*.whl ./dist/
+        cp ./result313/*.whl ./dist/
+        cp ./result314/*.whl ./dist/
+
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
