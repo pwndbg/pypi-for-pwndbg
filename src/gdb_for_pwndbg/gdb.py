@@ -20,28 +20,31 @@ def check_dynamic_linked():
         raise NotImplementedError(message)
 
 
+def iter_libpython_paths():
+    py_libpath = pathlib.Path(sys.base_exec_prefix) / 'lib' / get_config_var("INSTSONAME")
+    yield py_libpath
+
+    libpython_path = pathlib.Path(get_config_var("LIBDIR")) / get_config_var("INSTSONAME")
+    yield libpython_path
+
+
 def check_lib_python():
     in_venv = sys.base_exec_prefix != sys.exec_prefix
-    # is_user_site = self.lib_dir.startswith(site.USER_SITE)
-
-    # # Find libpython library names and locations
-    # shared_library_path = LIBDIR
-    # all_ld_library_names = list(set(n for n in (sysconfig.get_config_var("LDLIBRARY"),
-    #                                             sysconfig.get_config_var("INSTSONAME")) if n))
     if in_venv:
-        pass
+        # Install libpython into venv
 
-    # libpython_name = pathlib.Path(get_config_var("INSTSONAME"))
-    # libpython_dir = pathlib.Path(get_config_var("LIBDIR"))
-    # if (libpython_dir / libpython_name).exists():
-    #     return True
-    #
-    # for path in get_ld_paths():
-    #     if (pathlib.Path(path) / libpython_name).exists():
-    #         return True
-    #
-    # # TODO: only debian like?
-    # raise NotImplementedError(f'[error] missing libpython. Please install python3-dev or python3-devel')
+        venv_libpath = pathlib.Path(sys.exec_prefix) / 'lib' / get_config_var("INSTSONAME")
+        if not venv_libpath.exists():
+            py_libpath = next(filter(lambda p: p.exists(), iter_libpython_paths()), None)
+            if py_libpath is None:
+                # TODO: only debian like?
+                message = (
+                    "[error] missing libpython."
+                    "Please install python3-dev or python3-devel"
+                )
+                raise NotImplementedError(message)
+
+            venv_libpath.symlink_to(py_libpath)
 
 
 def main():
@@ -53,6 +56,7 @@ def main():
     envs['PYTHONPATH'] = ':'.join(sys.path)
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 
+    # todo: ld-path? /proc/self/exe? /proc/self/maps?
     os.execve(str(gdb_path), sys.argv, env=envs)
 
 

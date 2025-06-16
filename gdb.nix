@@ -59,6 +59,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   patches = [
     ./patches/gdb-fix-cross-python.patch
     ./patches/enable-silent.patch
+    ./patches/darwin-target-match.patch
   ];
 
   strictDeps = true;
@@ -84,6 +85,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     python3
   ];
+
+  passthru = {
+    pythonVersion = python3.pythonVersion;
+  };
 
   #  depsBuildBuild = [ buildPackages.stdenv.cc ];
   #  depsBuildBuild = [ buildPackages.zig.cc ];
@@ -126,6 +131,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     "--disable-sim"
     "--disable-gdbserver"
     "--with-python=${python3.pythonOnBuildForHost.interpreter}"
+
+    #    "--target=x86_64-apple-darwin"
   ];
 
   # TODO:

@@ -22,7 +22,7 @@
     }:
     let
       forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
-
+      lib = nixpkgs.lib;
     in
     {
       packages = forAllSystems (
@@ -36,23 +36,31 @@
               })
             ];
           };
+          pythonVersions = [
+            "310"
+            "311"
+            "312"
+            "313"
+            "314"
+          ];
         in
         {
-          gdb_310 = pkgs.callPackage ./gdb.nix {
-            python3 = pkgs.python310;
-          };
-          gdb_311 = pkgs.callPackage ./gdb.nix {
-            python3 = pkgs.python311;
-          };
-          gdb_312 = pkgs.callPackage ./gdb.nix {
-            python3 = pkgs.python312;
-          };
-          gdb_313 = pkgs.callPackage ./gdb.nix {
-            python3 = pkgs.python313;
-          };
-          gdb_314 = pkgs.callPackage ./gdb.nix {
-            python3 = pkgs.python314;
-          };
+          gdb = (
+            lib.genAttrs pythonVersions (
+              v:
+              pkgs.callPackage ./gdb.nix {
+                python3 = pkgs."python${v}";
+              }
+            )
+          );
+          wheel = (
+            lib.genAttrs pythonVersions (
+              v:
+              pkgs.callPackage ./wheel.nix {
+                gdb_drv = self.packages.${system}.gdb.${v};
+              }
+            )
+          );
         }
       );
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);
