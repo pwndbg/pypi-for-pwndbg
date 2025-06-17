@@ -49,4 +49,5 @@ jobs:
         cp ./result314/*.whl ./dist/
 
     - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      run: |
+        nix run nixpkgs#uv -- tool run twine upload dist/*
