@@ -154,7 +154,7 @@ stdenv.mkDerivation (finalAttrs: {
       bintools = finalAttrs.finalPackage.bintools;
       extraPackages = [ ];
       nixSupport.cc-cflags =
-        [
+        lib.optionals stdenv.targetPlatform.isLinux [
           "-target"
           "${stdenv.targetPlatform.system}-${stdenv.targetPlatform.parsed.abi.name}.2.28"
         ]

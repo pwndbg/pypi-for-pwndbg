@@ -1,11 +1,13 @@
 {
   gdb_drv,
+  lib,
   runCommand,
   stdenv,
   nukeReferences,
   patchelf,
   python3,
   bintools,
+  darwin,
 }:
 let
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
@@ -13,12 +15,18 @@ let
     {
       "x86_64-linux" = "/lib64/ld-linux-x86-64.so.2";
       "aarch64-linux" = "/lib/ld-linux-aarch64.so.1";
+
+      "x86_64-darwin" = "";
+      "aarch64-darwin" = "";
     }
     .${stdenv.targetPlatform.system};
   wheelType =
     {
       "x86_64-linux" = "manylinux_2_28_x86_64";
       "aarch64-linux" = "manylinux_2_28_aarch64";
+
+      "x86_64-darwin" = "macosx_10_13_x86_64";
+      "aarch64-darwin" = "macosx_11_0_arm64";
     }
     .${stdenv.targetPlatform.system};
 
@@ -32,15 +40,23 @@ let
 in
 runCommand "build-wheel"
   {
-    nativeBuildInputs = [
-      patchelf
-      nukeReferences
-      bintools
-      (python3.withPackages (ps: [
-        ps.setuptools
-        ps.wheel
-      ]))
-    ];
+    nativeBuildInputs =
+      [
+        nukeReferences
+        (python3.withPackages (ps: [
+          ps.setuptools
+          ps.wheel
+        ]))
+      ]
+      ++ lib.optionals stdenv.hostPlatform.isLinux [
+        bintools
+        patchelf
+      ]
+      ++ lib.optionals stdenv.hostPlatform.isDarwin [
+        darwin.cctools
+        darwin.binutils
+      ];
+    env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
   }
   ''
     set -ex
@@ -60,8 +76,17 @@ runCommand "build-wheel"
     cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
     chmod -R +w ./src/gdb_for_pwndbg/_vendor
 
-    patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
-    patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    if [ "$IS_LINUX" -eq 1 ]; then
+        patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    else
+        install_name_tool \
+            -change \
+            ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
+            '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
+            ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    fi
+
     strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
     nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
