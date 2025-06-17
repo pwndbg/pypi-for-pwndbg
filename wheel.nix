@@ -11,7 +11,7 @@ let
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
   interpreterPath =
     {
-      "x86_64-linux" = "/lib64/ld-linux-x86_64.so.2";
+      "x86_64-linux" = "/lib64/ld-linux-x86-64.so.2";
       "aarch64-linux" = "/lib/ld-linux-aarch64.so.1";
     }
     .${stdenv.targetPlatform.system};
