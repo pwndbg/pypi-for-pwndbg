@@ -11,7 +11,7 @@ here = pathlib.Path(__file__).parent.resolve()
 setup(
     name="gdb-for-pwndbg",
     version="16.2.4",
-    url="https://github.com/pwndbg/gdb-for-pwndbg",
+    url="https://github.com/pwndbg/pypi-for-pwndbg",
 
     package_dir={"": "src"},  # Optional
 
