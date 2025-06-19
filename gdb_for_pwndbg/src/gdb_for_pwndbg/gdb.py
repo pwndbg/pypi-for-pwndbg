@@ -9,16 +9,6 @@ from sysconfig import get_config_var
 here = pathlib.Path(__file__).parent.resolve()
 gdb_path = here / pathlib.Path('_vendor/bin/gdb')
 
-# def check_dynamic_linked():
-#     # FIXME:? on macos system python is PY_ENABLE_SHARED=0, but has libpython WTF?
-#     enable_shared = get_config_var("PY_ENABLE_SHARED") or get_config_var("Py_ENABLE_SHARED")
-#     if not enable_shared or not int(enable_shared):
-#         message = (
-#             "GDB requires dynamic linking to the `libpython` "
-#             "but current instance of CPython was built without `--enable-shared`."
-#         )
-#         raise NotImplementedError(message)
-
 
 def iter_libpython_paths():
     py_libpath = pathlib.Path(sys.base_exec_prefix) / 'lib' / get_libpython_name()
@@ -69,11 +59,10 @@ def check_lib_python():
 
 
 def main():
-    # check_dynamic_linked()
     check_lib_python()
 
     envs = os.environ.copy()
-    envs['PYTHONNOUSERSITE'] = '1'  # TODO: remove?
+    envs['PYTHONNOUSERSITE'] = '1'
     envs['PYTHONPATH'] = ':'.join(sys.path)
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 

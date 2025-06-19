@@ -10,16 +10,6 @@ here = pathlib.Path(__file__).parent.resolve()
 lldb_path = here / pathlib.Path('_vendor/bin/lldb')
 lldb_server_path = here / pathlib.Path('_vendor/bin/lldb-server')
 
-# def check_dynamic_linked():
-#     # FIXME:? on macos system python is PY_ENABLE_SHARED=0, but has libpython WTF?
-#     enable_shared = get_config_var("PY_ENABLE_SHARED") or get_config_var("Py_ENABLE_SHARED")
-#     if not enable_shared or not int(enable_shared):
-#         message = (
-#             "GDB requires dynamic linking to the `libpython` "
-#             "but current instance of CPython was built without `--enable-shared`."
-#         )
-#         raise NotImplementedError(message)
-
 
 def iter_libpython_paths():
     py_libpath = pathlib.Path(sys.base_exec_prefix) / 'lib' / get_libpython_name()
@@ -70,13 +60,15 @@ def check_lib_python():
 
 
 def main():
-    # check_dynamic_linked()
     check_lib_python()
 
     envs = os.environ.copy()
-    envs['PYTHONNOUSERSITE'] = '1'  # TODO: remove?
+    envs['PYTHONNOUSERSITE'] = '1'
     envs['PYTHONPATH'] = ':'.join(sys.path)
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
+
+    if sys.platform == "linux" and "LLDB_DEBUGSERVER_PATH" not in envs:
+        envs["LLDB_DEBUGSERVER_PATH"] = str(lldb_server_path)
 
     # todo: ld-path? /proc/self/exe? /proc/self/maps?
     os.execve(str(lldb_path), sys.argv, env=envs)
