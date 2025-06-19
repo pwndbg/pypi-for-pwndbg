@@ -1,1 +1,2 @@
 graft src/gdb_for_pwndbg/_vendor/
+graft src/gdb/
