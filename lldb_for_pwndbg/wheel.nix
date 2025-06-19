@@ -10,6 +10,8 @@
   darwin,
 }:
 let
+  lldbMajorMinorVersion = "${lib.versions.major lldb_drv.version}.${lib.versions.minor lldb_drv.version}";
+
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
   interpreterPath =
     {
@@ -76,16 +78,21 @@ runCommand "build-wheel"
     cp $LLDB_DIR/bin/lldb ./src/lldb_for_pwndbg/_vendor/bin/
     cp $LLDB_DIR/bin/lldb-server ./src/lldb_for_pwndbg/_vendor/bin/
 
-    cp -a $LLDB_DIR/lib/liblldb.* ./src/lldb_for_pwndbg/_vendor/lib/
     cp -rf $LLDB_DIR/lib/python*/site-packages/lldb/ ./src/
     chmod -R +w ./src/
 
+    # Fix lib
+    lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
+    rm ./src/lldb/$lldb_python_so
+    cp $LLDB_DIR/lib/liblldb.so ./src/lldb/$lldb_python_so
+    chmod -R +w ./src/
+
     if [ "$IS_LINUX" -eq 1 ]; then
-        # ld-$ORIGIN is not working good with symlinks
-        patchelf --set-rpath '$ORIGIN/../../../../lib:$ORIGIN/../../../../../../lib' ./src/lldb_for_pwndbg/_vendor/lib/liblldb.so
+        patchelf --set-rpath '$ORIGIN/../../../../lib' ./src/lldb/$lldb_python_so
 
         patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb
-        patchelf --set-rpath '$ORIGIN/../lib' ./src/lldb_for_pwndbg/_vendor/bin/lldb
+        patchelf --set-rpath '$ORIGIN/../../../lldb' ./src/lldb_for_pwndbg/_vendor/bin/lldb
+        patchelf --replace-needed liblldb.so.${lldbMajorMinorVersion} $lldb_python_so ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
         patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         patchelf --remove-rpath ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
@@ -97,16 +104,11 @@ runCommand "build-wheel"
     strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
     nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
 
-    strip ./src/lldb_for_pwndbg/_vendor/lib/liblldb.so
-    nuke-refs ./src/lldb_for_pwndbg/_vendor/lib/liblldb.so
+    strip ./src/lldb/$lldb_python_so
+    nuke-refs ./src/lldb/$lldb_python_so
 
     # this file is unused
     rm ./src/lldb/lldb-argdumper
-
-    # fix symlink to _vendor
-    lldb_target_so=$(ls ./src/lldb/_lldb*.so)
-    rm $lldb_target_so
-    ln -s '../lldb_for_pwndbg/_vendor/lib/liblldb.so' $lldb_target_so
 
     python3 setup.py bdist_wheel
     mkdir $out
