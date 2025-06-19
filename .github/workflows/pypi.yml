@@ -95,6 +95,7 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     - name: Free Disk Space (Ubuntu)
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       uses: jlumbroso/free-disk-space@main
       with:
         # this might remove tools that are actually needed,
