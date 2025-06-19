@@ -1,5 +1,8 @@
 build
 dist
-src/gdb
-src/gdb_for_pwndbg.egg-info
-src/gdb_for_pwndbg/_vendor
+gdb_for_pwndbg/src/gdb
+gdb_for_pwndbg/src/gdb_for_pwndbg.egg-info
+gdb_for_pwndbg/src/gdb_for_pwndbg/_vendor
+lldb_for_pwndbg/src/lldb
+lldb_for_pwndbg/src/lldb_for_pwndbg.egg-info
+lldb_for_pwndbg/src/lldb_for_pwndbg/_vendor

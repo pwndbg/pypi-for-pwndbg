@@ -32,7 +32,7 @@
             inherit system;
             overlays = [
               (final: prev: {
-                zig_new = (prev.callPackage ./zig { })."0.13";
+                zig_glibc_2_28 = (prev.callPackage ./zig { })."0.13";
               })
             ];
           };
@@ -48,16 +48,34 @@
           gdb = (
             lib.genAttrs pythonVersions (
               v:
-              pkgs.callPackage ./gdb.nix {
+              pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
                 python3 = pkgs."python${v}";
               }
             )
           );
-          wheel = (
+          lldb = (
             lib.genAttrs pythonVersions (
               v:
-              pkgs.callPackage ./wheel.nix {
+              pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
+                python3 = pkgs."python${v}";
+                version = pkgs.llvmPackages_20.llvm.version;
+                monorepoSrc = pkgs.llvmPackages_20.llvm.monorepoSrc;
+              }
+            )
+          );
+          gdb_wheel = (
+            lib.genAttrs pythonVersions (
+              v:
+              pkgs.callPackage ./gdb_for_pwndbg/wheel.nix {
                 gdb_drv = self.packages.${system}.gdb.${v};
+              }
+            )
+          );
+          lldb_wheel = (
+            lib.genAttrs pythonVersions (
+              v:
+              pkgs.callPackage ./lldb_for_pwndbg/wheel.nix {
+                lldb_drv = self.packages.${system}.lldb.${v};
               }
             )
           );
