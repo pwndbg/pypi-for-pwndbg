@@ -81,13 +81,13 @@ runCommand "build-wheel"
     cp -rf $LLDB_DIR/lib/python*/site-packages/lldb/ ./src/
     chmod -R +w ./src/
 
-    # Fix lib
-    lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
-    rm ./src/lldb/$lldb_python_so
-    cp $LLDB_DIR/lib/liblldb.so ./src/lldb/$lldb_python_so
-    chmod -R +w ./src/
-
     if [ "$IS_LINUX" -eq 1 ]; then
+        # Fix lib
+        lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
+        rm ./src/lldb/$lldb_python_so
+        cp $LLDB_DIR/lib/liblldb.so ./src/lldb/$lldb_python_so
+        chmod -R +w ./src/
+
         patchelf --set-rpath '$ORIGIN/../../../../lib' ./src/lldb/$lldb_python_so
 
         patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb
@@ -96,6 +96,25 @@ runCommand "build-wheel"
 
         patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         patchelf --remove-rpath ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    else
+        # Fix lib
+        lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
+        rm ./src/lldb/$lldb_python_so
+        cp $LLDB_DIR/lib/liblldb.dylib ./src/lldb/$lldb_python_so
+        ls -al ./src/
+        chmod -R +w ./src/
+
+        install_name_tool \
+            -change \
+            ${lldb_drv.python}/lib/libpython${lldb_drv.pythonVersion}.dylib \
+            '@loader_path/../../../../lib/libpython${lldb_drv.pythonVersion}.dylib' \
+            ./src/lldb/$lldb_python_so
+
+        install_name_tool \
+            -change \
+            '@rpath/liblldb.${lldb_drv.version}.dylib' \
+            "@executable_path/../../../lldb/$lldb_python_so" \
+            ./src/lldb_for_pwndbg/_vendor/bin/lldb
     fi
 
     strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
@@ -104,7 +123,7 @@ runCommand "build-wheel"
     strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
     nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
 
-    strip ./src/lldb/$lldb_python_so
+    strip -S ./src/lldb/$lldb_python_so
     nuke-refs ./src/lldb/$lldb_python_so
 
     # this file is unused

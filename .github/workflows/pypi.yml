@@ -76,8 +76,8 @@ jobs:
           ubuntu-latest,  # x86_64-linux
           ubuntu-24.04-arm,  # aarch64-linux
 
-#          macos-13,  # x86_64-darwin
-#          macos-15,  # aarch64-darwin
+          macos-13,  # x86_64-darwin
+          macos-15,  # aarch64-darwin
         ]
         attribute: [
           lldb_wheel.310,
@@ -87,7 +87,7 @@ jobs:
           lldb_wheel.314,
         ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 180
+    timeout-minutes: 260
     environment:
       name: pypi
       url: https://pypi.org/p/lldb-for-pwndbg
