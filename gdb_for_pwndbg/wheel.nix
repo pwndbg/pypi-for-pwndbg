@@ -74,7 +74,8 @@ runCommand "build-wheel"
     mkdir -p ./src/gdb_for_pwndbg/_vendor/share
 
     cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
-    chmod -R +w ./src/gdb_for_pwndbg/_vendor
+    cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
+    chmod -R +w ./src/
 
     if [ "$IS_LINUX" -eq 1 ]; then
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
@@ -89,8 +90,6 @@ runCommand "build-wheel"
 
     strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
     nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
-
-    cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
 
     python3 setup.py bdist_wheel
     mkdir $out

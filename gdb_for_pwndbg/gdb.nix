@@ -80,7 +80,7 @@ stdenvOver.mkDerivation (finalAttrs: {
       libiconv
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      buildPackages.zig_new.cc
+      buildPackages.zig_glibc_2_28.cc
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
     ];
