@@ -1,0 +1,4 @@
+ARG image=archlinux
+FROM $image
+
+RUN pacman -S --noconfirm python3
