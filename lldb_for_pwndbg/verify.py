@@ -45,8 +45,7 @@ def iter_elf_deps(exe: Path) -> typing.Iterator[Path]:
         if not line:
             continue
 
-        lib_path = Path(splited[0])
-        yield lib_path
+        yield Path(line)
 
 
 if sys.platform == "darwin":
