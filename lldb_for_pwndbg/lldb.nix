@@ -124,4 +124,5 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   doCheck = false;
   dontStrip = true;
+  dontFixup = true;
 })

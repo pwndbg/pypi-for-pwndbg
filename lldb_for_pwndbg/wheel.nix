@@ -111,6 +111,10 @@ runCommand "build-wheel"
             ./src/lldb/$lldb_python_so
 
         install_name_tool \
+            -id $lldb_python_so \
+            ./src/lldb/$lldb_python_so
+
+        install_name_tool \
             -change \
             '@rpath/liblldb.${lldb_drv.version}.dylib' \
             "@executable_path/../../../lldb/$lldb_python_so" \
@@ -128,6 +132,10 @@ runCommand "build-wheel"
 
     # this file is unused
     rm ./src/lldb/lldb-argdumper
+
+    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb
+    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb/$lldb_python_so
 
     python3 setup.py bdist_wheel
     mkdir $out
