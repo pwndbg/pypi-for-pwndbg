@@ -7,6 +7,7 @@
   patchelf,
   python3,
   bintools,
+  libxcrypt,
   darwin,
 }:
 let
@@ -78,18 +79,48 @@ runCommand "build-wheel"
     chmod -R +w ./src/
 
     if [ "$IS_LINUX" -eq 1 ]; then
+        cp $GDB_DIR/bin/gdbserver ./src/gdb_for_pwndbg/_vendor/bin/
+        patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
         patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+        if [ "$PY_VERSION" -eq "310" ]; then
+            # libcrypt is not needed for `gdb`, only libpython still is depending on it
+            patchelf --remove-needed 'libcrypt.so.2' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        fi
     else
         install_name_tool \
             -change \
             ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
             '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
             ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+        if [ "$PY_VERSION" -eq "310" ]; then
+            mkdir -p ./src/gdb_for_pwndbg/_vendor/lib
+            cp ${libxcrypt}/lib/libcrypt.2.dylib ./src/gdb_for_pwndbg/_vendor/lib/
+
+            install_name_tool \
+                -change \
+                ${libxcrypt}/lib/libcrypt.2.dylib \
+                '@executable_path/../lib/libcrypt.2.dylib' \
+                ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        fi
     fi
 
     strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
     nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+    if [ "$IS_LINUX" -eq 1 ]; then
+        strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+    fi
+
+    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    if [ "$IS_LINUX" -eq 1 ]; then
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+    fi
 
     python3 setup.py bdist_wheel
     mkdir $out

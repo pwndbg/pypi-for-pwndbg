@@ -10,7 +10,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name="gdb-for-pwndbg",
-    version="16.2.5",
+    version="16.2.6",
     url="https://github.com/pwndbg/pypi-for-pwndbg",
 
     package_dir={"": "src"},  # Optional
@@ -23,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "gdb=gdb_for_pwndbg.gdb:main",
+            "gdbserver=gdb_for_pwndbg.gdbserver:main",
         ],
     },
     project_urls={

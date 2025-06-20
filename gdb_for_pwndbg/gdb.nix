@@ -165,7 +165,6 @@ stdenvOver.mkDerivation (finalAttrs: {
       "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
 
       "--disable-sim"
-      "--disable-gdbserver"
       "--with-python=${python3.pythonOnBuildForHost.interpreter}"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
@@ -184,4 +183,5 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   dontStrip = true;
   doCheck = false;
+  dontFixup = true;
 })
