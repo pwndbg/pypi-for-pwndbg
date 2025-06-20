@@ -65,10 +65,7 @@ def build_and_test(distro_type, image):
                 "-t", tag, tmpdir
             ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
-            is_platform_not_supported = (
-                b"no match for platform in manifest: not found" in e.stderr
-                or b"ERROR: failed to solve: failed to read dockerfile: no local sources enabled" in e.stderr
-            )
+            is_platform_not_supported = b"no match for platform in manifest: not found" in e.stderr
             if is_platform_not_supported:
                 pytest.xfail(reason=f"{image} is not supported on {platform.machine()}")
                 return
