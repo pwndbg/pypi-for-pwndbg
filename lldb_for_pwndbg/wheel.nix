@@ -76,12 +76,13 @@ runCommand "build-wheel"
     mkdir -p ./src/lldb_for_pwndbg/_vendor/lib
 
     cp $LLDB_DIR/bin/lldb ./src/lldb_for_pwndbg/_vendor/bin/
-    cp $LLDB_DIR/bin/lldb-server ./src/lldb_for_pwndbg/_vendor/bin/
 
     cp -rf $LLDB_DIR/lib/python*/site-packages/lldb/ ./src/
     chmod -R +w ./src/
 
     if [ "$IS_LINUX" -eq 1 ]; then
+        cp $LLDB_DIR/bin/lldb-server ./src/lldb_for_pwndbg/_vendor/bin/
+
         # Fix lib
         lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
         rm ./src/lldb/$lldb_python_so
@@ -124,8 +125,10 @@ runCommand "build-wheel"
     strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
     nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
-    strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
-    nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    if [ "$IS_LINUX" -eq 1 ]; then
+        strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+        nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    fi
 
     strip -S ./src/lldb/$lldb_python_so
     nuke-refs ./src/lldb/$lldb_python_so
@@ -134,7 +137,9 @@ runCommand "build-wheel"
     rm ./src/lldb/lldb-argdumper
 
     python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb
-    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    if [ "$IS_LINUX" -eq 1 ]; then
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+    fi
     python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb/$lldb_python_so
 
     python3 setup.py bdist_wheel
