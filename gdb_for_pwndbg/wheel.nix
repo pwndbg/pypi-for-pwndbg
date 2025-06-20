@@ -80,6 +80,8 @@ runCommand "build-wheel"
 
     if [ "$IS_LINUX" -eq 1 ]; then
         cp $GDB_DIR/bin/gdbserver ./src/gdb_for_pwndbg/_vendor/bin/
+        chmod -R +w ./src/
+
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
 
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
