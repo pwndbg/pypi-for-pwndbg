@@ -1,5 +1,6 @@
 build
 dist
+result
 gdb_for_pwndbg/src/gdb
 gdb_for_pwndbg/src/gdb_for_pwndbg.egg-info
 gdb_for_pwndbg/src/gdb_for_pwndbg/_vendor
