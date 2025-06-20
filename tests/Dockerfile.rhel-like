@@ -1,2 +1,4 @@
 ARG image=almalinux
 FROM $image
+
+RUN dnf install -y python3
