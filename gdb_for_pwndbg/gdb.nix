@@ -11,19 +11,6 @@
   texinfo,
   buildPackages,
 
-  # Run time
-  readline,
-  libiconv,
-  #  ncurses,
-  #  gmp,
-  #  mpfr,
-  #  expat,
-  #  libipt,
-  #  zlib,
-  #  zstd,
-  #  xz,
-  #  sourceHighlight,
-
   breakpointHook,
   python3,
 
@@ -35,17 +22,10 @@
   writeScript,
 }:
 let
-  x = 1;
-  #  readlineStatic = readline.overrideAttrs (old': {
-  #    configureFlags = (old'.configureFlags or [ ]) ++ [
-  #      "--enable-static"
-  #      "--disable-shared"
-  #    ];
-  #    postInstall = ''
-  #      cp -v ./libhistory.a $out/lib/
-  #      cp -v ./libreadline.a $out/lib/
-  #    '';
-  #  });
+  # Dynamic libiconv causes issues with our portable build.
+  # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
+  # then loads /some-path/lib/gconv/UTF-32.so dynamically.
+  libiconv = pkgsStatic.libiconvReal;
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -77,7 +57,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     [
       pkg-config
       texinfo
-      libiconv
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
       buildPackages.zig_glibc_2_28.cc
@@ -85,27 +64,19 @@ stdenvOver.mkDerivation (finalAttrs: {
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
     ];
 
-  buildInputs =
-    [
-      pkgsStatic.ncurses
-      pkgsStatic.gmp
-      pkgsStatic.mpfr
-      pkgsStatic.expat
-      pkgsStatic.libipt
-      pkgsStatic.zlib
-      pkgsStatic.zstd
-      pkgsStatic.xz
-      pkgsStatic.sourceHighlight
+  buildInputs = [
+    pkgsStatic.ncurses
+    pkgsStatic.gmp
+    pkgsStatic.mpfr
+    pkgsStatic.expat
+    pkgsStatic.libipt
+    pkgsStatic.zlib
+    pkgsStatic.zstd
+    pkgsStatic.xz
+    pkgsStatic.sourceHighlight
 
-      python3
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isLinux [
-      pkgsStatic.libiconv
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-      # Darwin version of libiconv use too much dlopen, but gnu version not.
-      pkgsStatic.libiconvReal
-    ];
+    python3
+  ];
 
   passthru = {
     pythonVersion = python3.pythonVersion;
@@ -120,8 +91,15 @@ stdenvOver.mkDerivation (finalAttrs: {
     ]
   );
 
+  env.CPPFLAGS = builtins.concatStringsSep " " ([
+    "-I${libiconv}/include"
+  ]);
+
   env.LDFLAGS = builtins.concatStringsSep " " (
-    lib.optionals stdenv.hostPlatform.isDarwin [
+    [
+      "-L${libiconv}/lib"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
       "-nostdlib++"
       "-Wl,${stdenv.cc.libcxx}/lib/libc++.a,${stdenv.cc.libcxx}/lib/libc++abi.a"
