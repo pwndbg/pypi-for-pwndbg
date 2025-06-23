@@ -76,6 +76,9 @@ runCommand "build-wheel"
 
     cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
     cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
+
+    mkdir -p ./src/gdb_for_pwndbg/_vendor/share/gdb/
+    cp -rf $GDB_DIR/share/gdb/syscalls/ ./src/gdb_for_pwndbg/_vendor/share/gdb/
     chmod -R +w ./src/
 
     if [ "$IS_LINUX" -eq 1 ]; then
@@ -83,7 +86,6 @@ runCommand "build-wheel"
         chmod -R +w ./src/
 
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
-
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
         patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb

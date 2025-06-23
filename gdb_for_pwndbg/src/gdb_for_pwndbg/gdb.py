@@ -8,6 +8,7 @@ from sysconfig import get_config_var
 
 here = pathlib.Path(__file__).parent.resolve()
 gdb_path = here / pathlib.Path('_vendor/bin/gdb')
+data_path = here / pathlib.Path('_vendor/share/gdb')
 
 
 def iter_libpython_paths():
@@ -67,6 +68,8 @@ def main():
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 
     # todo: ld-path? /proc/self/exe? /proc/self/maps?
+    sys.argv.insert(1, str(data_path))
+    sys.argv.insert(1, "--data-directory")
     os.execve(str(gdb_path), sys.argv, env=envs)
 
 
