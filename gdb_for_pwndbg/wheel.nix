@@ -73,6 +73,7 @@ runCommand "build-wheel"
 
     mkdir -p ./src/gdb_for_pwndbg/_vendor/bin
     mkdir -p ./src/gdb_for_pwndbg/_vendor/share
+    mkdir -p ./src/gdb_for_pwndbg/_vendor/lib
 
     cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
     cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
@@ -85,10 +86,19 @@ runCommand "build-wheel"
         cp $GDB_DIR/bin/gdbserver ./src/gdb_for_pwndbg/_vendor/bin/
         chmod -R +w ./src/
 
+        cp ${gdb_drv.libdebuginfod.out}/lib/libelf.so.1 ./src/gdb_for_pwndbg/_vendor/lib/
+        cp ${gdb_drv.libdebuginfod.out}/lib/libdebuginfod.so.1 ./src/gdb_for_pwndbg/_vendor/lib/
+        cp ${gdb_drv.libdebuginfod.libcurl.out}/lib/libcurl.so.4 ./src/gdb_for_pwndbg/_vendor/lib/
+        chmod -R +w ./src/
+
+        patchelf --set-rpath '$ORIGIN/../lib' ./src/gdb_for_pwndbg/_vendor/lib/libelf.so.1
+        patchelf --set-rpath '$ORIGIN/../lib' ./src/gdb_for_pwndbg/_vendor/lib/libdebuginfod.so.1
+        patchelf --set-rpath '$ORIGIN/../lib' ./src/gdb_for_pwndbg/_vendor/lib/libcurl.so.4
+
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
-        patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        patchelf --set-rpath '$ORIGIN/../lib:$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
         if [ "$PY_VERSION" -eq "310" ]; then
             # libcrypt is not needed for `gdb`, only libpython still is depending on it
@@ -119,11 +129,23 @@ runCommand "build-wheel"
     if [ "$IS_LINUX" -eq 1 ]; then
         strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
         nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+
+        #strip -S ./src/gdb_for_pwndbg/_vendor/lib/libdebuginfod.so.1
+        nuke-refs ./src/gdb_for_pwndbg/_vendor/lib/libdebuginfod.so.1
+
+        #strip -S ./src/gdb_for_pwndbg/_vendor/lib/libelf.so.1
+        nuke-refs ./src/gdb_for_pwndbg/_vendor/lib/libelf.so.1
+
+        #strip -S ./src/gdb_for_pwndbg/_vendor/lib/libcurl.so.4
+        nuke-refs ./src/gdb_for_pwndbg/_vendor/lib/libcurl.so.4
     fi
 
     python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdb
     if [ "$IS_LINUX" -eq 1 ]; then
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/lib/libdebuginfod.so.1
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/lib/libelf.so.1
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/lib/libcurl.so.4
     fi
 
     python3 setup.py bdist_wheel

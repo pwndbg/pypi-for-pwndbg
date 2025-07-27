@@ -100,6 +100,10 @@ libpython_dependencies = {
 
 allowlist_dependencies = {
     "x86_64-linux": [
+        "libdebuginfod.so.1",
+        "libelf.so.1",
+        "libcurl.so.4",
+
         "libm.so.6",
         "libpthread.so.0",
         "libc.so.6",
@@ -107,6 +111,10 @@ allowlist_dependencies = {
         "ld-linux-x86-64.so.2",
     ],
     "aarch64-linux": [
+        "libdebuginfod.so.1",
+        "libelf.so.1",
+        "libcurl.so.4",
+
         "libm.so.6",
         "libpthread.so.0",
         "libc.so.6",

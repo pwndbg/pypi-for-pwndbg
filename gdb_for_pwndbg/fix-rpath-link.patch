@@ -1,0 +1,51 @@
+Index: tests/Makefile.am
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+--- a/tests/Makefile.am	(revision 0f3b436b7e4fc4d310be79a62e40a115fdc482d0)
++++ b/tests/Makefile.am	(date 1750619796128)
+@@ -23,7 +23,7 @@
+ 	    -I$(top_srcdir)/libdwfl -I$(top_srcdir)/libdwelf \
+ 	    -I$(top_srcdir)/libebl -I$(top_srcdir)/libelf \
+ 	    -I$(top_srcdir)/lib -I..
+-AM_LDFLAGS = -Wl,-rpath-link,../libasm:../libdw:../libelf
++AM_LDFLAGS = -L../libasm -L../libdw -L../libelf
+
+ if TESTS_RPATH
+ AM_LDFLAGS += -Wl,-rpath,$(BUILD_RPATH)
+Index: src/Makefile.am
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Makefile.am b/src/Makefile.am
+--- a/src/Makefile.am	(revision 0f3b436b7e4fc4d310be79a62e40a115fdc482d0)
++++ b/src/Makefile.am	(date 1750619733252)
+@@ -25,7 +25,7 @@
+ 	    -I$(srcdir)/../libdw -I$(srcdir)/../libdwelf \
+ 	    -I$(srcdir)/../libdwfl -I$(srcdir)/../libasm -I../debuginfod
+
+-AM_LDFLAGS = -Wl,-rpath-link,../libelf:../libdw $(STACK_USAGE_NO_ERROR)
++AM_LDFLAGS = -L../libelf -L../libdw $(STACK_USAGE_NO_ERROR)
+
+ bin_PROGRAMS = readelf nm size strip elflint findtextrel addr2line \
+ 	       elfcmp objdump ranlib strings ar unstrip stack elfcompress \
+Index: debuginfod/Makefile.am
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/debuginfod/Makefile.am b/debuginfod/Makefile.am
+--- a/debuginfod/Makefile.am	(revision 0f3b436b7e4fc4d310be79a62e40a115fdc482d0)
++++ b/debuginfod/Makefile.am	(date 1750620862050)
+@@ -58,7 +58,7 @@
+ libebl = ../libebl/libebl.a
+ libeu = ../lib/libeu.a
+
+-AM_LDFLAGS = -Wl,-rpath-link,../libelf:../libdw:.
++AM_LDFLAGS = -L../libelf -L../libdw -L.
+
+ bin_PROGRAMS =
+ if DEBUGINFOD

@@ -1,9 +1,8 @@
 {
   lib,
   stdenv,
-  stdenvNoCC,
-  targetPackages,
   pkgsStatic,
+  pkgsBuildHost,
 
   # Build time
   fetchurl,
@@ -22,6 +21,8 @@
   writeScript,
 }:
 let
+  libdebuginfod = pkgsBuildHost.callPackage ./libdebuginfod.nix { };
+
   # Dynamic libiconv causes issues with our portable build.
   # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
   # then loads /some-path/lib/gconv/UTF-32.so dynamically.
@@ -29,7 +30,7 @@ let
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
-  stdenvOver = if stdenv.hostPlatform.isLinux then stdenvNoCC else stdenv;
+  stdenvOver = if stdenv.hostPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "gdb";
@@ -53,43 +54,38 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   strictDeps = true;
 
-  nativeBuildInputs =
+  nativeBuildInputs = [
+    pkg-config
+    texinfo
+  ];
+
+  buildInputs =
     [
-      pkg-config
-      texinfo
+      pkgsStatic.ncurses
+      pkgsStatic.gmp
+      pkgsStatic.mpfr
+      pkgsStatic.expat
+      pkgsStatic.libipt
+      pkgsStatic.zlib
+      pkgsStatic.zstd
+      pkgsStatic.xz
+      pkgsStatic.sourceHighlight
+
+      python3
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      buildPackages.zig_glibc_2_28.cc
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      libdebuginfod
     ];
-
-  buildInputs = [
-    pkgsStatic.ncurses
-    pkgsStatic.gmp
-    pkgsStatic.mpfr
-    pkgsStatic.expat
-    pkgsStatic.libipt
-    pkgsStatic.zlib
-    pkgsStatic.zstd
-    pkgsStatic.xz
-    pkgsStatic.sourceHighlight
-
-    python3
-  ];
 
   passthru = {
     pythonVersion = python3.pythonVersion;
     python = python3;
+    libdebuginfod = libdebuginfod;
   };
 
-  env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " (
-    [
-      "-Wno-format-nonliteral"
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-    ]
-  );
+  env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " ([
+    "-Wno-format-nonliteral"
+  ]);
 
   env.CPPFLAGS = builtins.concatStringsSep " " ([
     "-I${libiconv}/include"
@@ -143,15 +139,15 @@ stdenvOver.mkDerivation (finalAttrs: {
       "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
 
       "--disable-sim"
+      "--disable-inprocess-agent"
       "--with-python=${python3.pythonOnBuildForHost.interpreter}"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      "--with-debuginfod=yes"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       "--target=x86_64-apple-darwin"
     ];
-
-  # TODO:
-  # fix: --with-python=/nix/store/g61j9ws03l841jyb2wxin8ab0dqh5viv-python3-3.14.0a6
-  # fix: --with-python-libdir=/nix/store/g61j9ws03l841jyb2wxin8ab0dqh5viv-python3-3.14.0a6/lib
 
   # TODO: to powinno byc lib/python3.12/site-packages/gdb/
   # TODO: __init__.py powinno zwraca komunikat jakis lepszy jak _gdb import sie wywali
