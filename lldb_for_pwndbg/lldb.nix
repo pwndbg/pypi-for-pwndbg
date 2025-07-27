@@ -23,7 +23,7 @@ let
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
-  stdenvOver = if stdenv.hostPlatform.isLinux then stdenvNoCC else stdenv;
+  stdenvOver = if stdenv.hostPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "lldb";
@@ -53,9 +53,6 @@ stdenvOver.mkDerivation (finalAttrs: {
       which
       swig
       ninja
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isLinux [
-      buildPackages.zig_glibc_2_28.cc
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
     ];
