@@ -2,6 +2,7 @@
   lib,
   stdenv,
   stdenvNoCC,
+  pkgsStatic,
   buildPackages,
 
   version,
@@ -66,6 +67,8 @@ stdenvOver.mkDerivation (finalAttrs: {
   );
 
   buildInputs = [
+    pkgsStatic.zlib
+    pkgsStatic.zstd
   ];
 
   cmakeFlags =
@@ -103,8 +106,8 @@ stdenvOver.mkDerivation (finalAttrs: {
       (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
 
       # libc.so.6 Unable to initialize decompressor for section '.debug_abbrev'
-      # LLVM was not built with LLVM_ENABLE_ZLIB or did not find zlib at build time
       (lib.cmakeBool "LLVM_ENABLE_ZLIB" true)
+      (lib.cmakeBool "LLVM_ENABLE_ZSTD" true)
 
       (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     ]
