@@ -22,6 +22,15 @@ let
     inherit version monorepoSrc;
   };
 
+  # Dynamic libiconv causes issues with our portable build.
+  # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
+  # then loads /some-path/lib/gconv/UTF-32.so dynamically.
+  # libiconv is required by libxml2
+  libxml2NonLinux = pkgsStatic.libxml2.overrideAttrs (old: {
+    propagatedBuildInputs = [ pkgsStatic.libiconvReal ];
+  });
+  libxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
+
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
   stdenvOver = if stdenv.hostPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
@@ -70,8 +79,8 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.zstd
     pkgsStatic.xz
 
-    #    pkgsStatic.libedit  # fixme: bugged
-    pkgsStatic.libxml2
+    # pkgsStatic.libedit  # fixme: bugged
+    libxml2
     pkgsStatic.ncurses
   ];
 
