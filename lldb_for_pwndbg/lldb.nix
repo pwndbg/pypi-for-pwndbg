@@ -43,8 +43,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   # See: https://github.com/ziglang/zig-bootstrap/commit/451966c163c7a2e9769d62fd77585af1bc9aca4b
   # See: https://github.com/ziglang/zig/issues/18804#issue-2116892765
   postPatch = ''
-    chmod +w ./../clang/tools/CMakeLists.txt
-    chmod +w ./../clang/tools/
+    chmod -R a+w ../../
     sed -i 's@add_clang_subdirectory(clang-shlib)@@g' ./../clang/tools/CMakeLists.txt
   '';
 
@@ -69,6 +68,11 @@ stdenvOver.mkDerivation (finalAttrs: {
   buildInputs = [
     pkgsStatic.zlib
     pkgsStatic.zstd
+    pkgsStatic.xz
+
+    #    pkgsStatic.libedit  # fixme: bugged
+    pkgsStatic.libxml2
+    pkgsStatic.ncurses
   ];
 
   cmakeFlags =
@@ -108,6 +112,11 @@ stdenvOver.mkDerivation (finalAttrs: {
       # libc.so.6 Unable to initialize decompressor for section '.debug_abbrev'
       (lib.cmakeBool "LLVM_ENABLE_ZLIB" true)
       (lib.cmakeBool "LLVM_ENABLE_ZSTD" true)
+      (lib.cmakeBool "LLDB_ENABLE_LZMA" true)
+
+      (lib.cmakeBool "LLDB_ENABLE_LIBXML2" true)
+      (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
+      #      (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)  # fixme: bugged
 
       (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     ]

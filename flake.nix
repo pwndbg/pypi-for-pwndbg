@@ -58,8 +58,13 @@
               v:
               pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
                 python3 = pkgs."python${v}";
-                version = pkgs.llvmPackages_20.llvm.version;
-                monorepoSrc = pkgs.llvmPackages_20.llvm.monorepoSrc;
+                version = "20.1.8";
+                monorepoSrc = pkgs.fetchFromGitHub {
+                  owner = "llvm";
+                  repo = "llvm-project";
+                  rev = "llvmorg-20.1.8";
+                  hash = "sha256-ysyB/EYxi2qE9fD5x/F2zI4vjn8UDoo1Z9ukiIrjFGw=";
+                };
               }
             )
           );
