@@ -37,7 +37,7 @@ jobs:
           macos-15,  # aarch64-darwin
         ]
     runs-on: ${{ matrix.os }}
-    if: (inputs.buildType == 'gdb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all')
+    if: ${{ (inputs.buildType == 'gdb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all') }}
     timeout-minutes: 180
     environment:
       name: pypi
@@ -103,7 +103,7 @@ jobs:
           lldb_wheel.314,
         ]
     runs-on: ${{ matrix.os }}
-    if: (inputs.buildType == 'lldb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all')
+    if: ${{ (inputs.buildType == 'lldb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all') }}
     timeout-minutes: 260
     environment:
       name: pypi
