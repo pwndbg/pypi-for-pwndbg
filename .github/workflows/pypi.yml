@@ -12,10 +12,20 @@ on:
         - gdb
         - lldb
         - all
+      osType:
+        description: 'What os?'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - ubuntu-latest
+        - ubuntu-24.04-arm
+        - macos-13
+        - macos-15
+        - all
 
 jobs:
   releases-gdb:
-    if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
       matrix:
@@ -27,6 +37,7 @@ jobs:
           macos-15,  # aarch64-darwin
         ]
     runs-on: ${{ matrix.os }}
+    if: (inputs.buildType == 'gdb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all')
     timeout-minutes: 180
     environment:
       name: pypi
@@ -63,12 +74,17 @@ jobs:
         cp ./result313/*.whl ./dist/
         cp ./result314/*.whl ./dist/
 
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
+      with:
+        name: ${{ matrix.os }}_${{ matrix.attribute }}
+        retention-days: 90
+        path: ./dist/*
+
     - name: Publish package distributions to PyPI
       run: |
         nix run nixpkgs#uv -- tool run twine upload dist/*
 
   releases-lldb:
-    if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
       matrix:
@@ -87,6 +103,7 @@ jobs:
           lldb_wheel.314,
         ]
     runs-on: ${{ matrix.os }}
+    if: (inputs.buildType == 'lldb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all')
     timeout-minutes: 260
     environment:
       name: pypi
@@ -122,6 +139,12 @@ jobs:
       run: |
         mkdir dist
         cp ./result/*.whl ./dist/
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
+      with:
+        name: ${{ matrix.os }}_${{ matrix.attribute }}
+        retention-days: 90
+        path: ./dist/*
 
     - name: Publish package distributions to PyPI
       run: |
