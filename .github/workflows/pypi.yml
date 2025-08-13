@@ -26,6 +26,7 @@ on:
 
 jobs:
   releases-gdb:
+    if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +38,6 @@ jobs:
           macos-15,  # aarch64-darwin
         ]
     runs-on: ${{ matrix.os }}
-    if: ${{ (inputs.buildType == 'gdb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all') }}
     timeout-minutes: 180
     environment:
       name: pypi
@@ -45,6 +45,10 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+    - name: skip if
+      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
+      run: exit 1
+
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
     - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
       with:
@@ -85,6 +89,7 @@ jobs:
         nix run nixpkgs#uv -- tool run twine upload dist/*
 
   releases-lldb:
+    if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +108,6 @@ jobs:
           lldb_wheel.314,
         ]
     runs-on: ${{ matrix.os }}
-    if: ${{ (inputs.buildType == 'lldb' || inputs.buildType == 'all') && (inputs.osType == matrix.os || inputs.osType == 'all') }}
     timeout-minutes: 260
     environment:
       name: pypi
@@ -111,6 +115,10 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+    - name: skip if
+      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
+      run: exit 1
+
     - name: Free Disk Space (Ubuntu)
       if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
       uses: jlumbroso/free-disk-space@main
