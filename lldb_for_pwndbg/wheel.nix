@@ -35,7 +35,7 @@ let
   wheelVersion =
     let
       versionFile = builtins.readFile ./setup.py;
-      versionMatch = builtins.match ".*\n[\t ]*version=\"([0-9]+.[0-9]+.[0-9]+)\".*" versionFile;
+      versionMatch = builtins.match ".*\n[\t ]*version=\"([0-9]+.[0-9]+.[0-9]+(.[a-z0-9]+)?)\".*" versionFile;
       version = if versionMatch == null then "unknown" else (builtins.elemAt versionMatch 0);
     in
     version;
