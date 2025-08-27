@@ -6,7 +6,7 @@ diff --git a/lldb/source/Plugins/Process/gdb-remote/GDBRemoteCommunicationClient
            }
          } else if (name == "type") {
 +          if (region_info.GetName() == nullptr) {
-+            std::string name(value);
++            std::string name = "[" + std::string(value) + "]";
 +            region_info.SetName(name.c_str());
 +          }
            for (llvm::StringRef entry : llvm::split(value, ',')) {
