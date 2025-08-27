@@ -1,0 +1,14 @@
+diff --git a/lldb/source/Plugins/Process/gdb-remote/GDBRemoteCommunicationClient.cpp b/lldb/source/Plugins/Process/gdb-remote/GDBRemoteCommunicationClient.cpp
+--- a/lldb/source/Plugins/Process/gdb-remote/GDBRemoteCommunicationClient.cpp	(revision 87f0227cb60147a26a1eeb4fb06e3b505e9c7261)
++++ b/lldb/source/Plugins/Process/gdb-remote/GDBRemoteCommunicationClient.cpp	(date 1756334485170)
+@@ -1641,6 +1641,10 @@
+             }
+           }
+         } else if (name == "type") {
++          if (region_info.GetName() == nullptr) {
++            std::string name(value);
++            region_info.SetName(name.c_str());
++          }
+           for (llvm::StringRef entry : llvm::split(value, ',')) {
+             if (entry == "stack")
+               region_info.SetIsStackMemory(MemoryRegionInfo::eYes);

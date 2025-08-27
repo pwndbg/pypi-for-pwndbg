@@ -29,7 +29,7 @@ let
   libxml2NonLinux = pkgsStatic.libxml2.overrideAttrs (old: {
     propagatedBuildInputs = [ pkgsStatic.libiconvReal ];
   });
-  libxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
+  staticLibxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -40,7 +40,6 @@ stdenvOver.mkDerivation (finalAttrs: {
   inherit version;
 
   src = monorepoSrc;
-  sourceRoot = "${finalAttrs.src.name}/llvm";
   enableParallelBuilding = true;
   strictDeps = true;
 
@@ -49,11 +48,19 @@ stdenvOver.mkDerivation (finalAttrs: {
     python = python3;
   };
 
+  patches = [
+    # temporary fix for: https://github.com/llvm/llvm-project/issues/155692
+    ./1.patch
+  ];
+
   # See: https://github.com/ziglang/zig-bootstrap/commit/451966c163c7a2e9769d62fd77585af1bc9aca4b
   # See: https://github.com/ziglang/zig/issues/18804#issue-2116892765
   postPatch = ''
-    chmod -R a+w ../../
-    sed -i 's@add_clang_subdirectory(clang-shlib)@@g' ./../clang/tools/CMakeLists.txt
+    chmod -R a+w ../
+    sed -i 's@add_clang_subdirectory(clang-shlib)@@g' ./clang/tools/CMakeLists.txt
+
+    # others steps must execute from llvm directory
+    cd llvm;
   '';
 
   nativeBuildInputs =
@@ -80,7 +87,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.xz
 
     # pkgsStatic.libedit  # fixme: bugged
-    libxml2
+    staticLibxml2
     pkgsStatic.ncurses
   ];
 
