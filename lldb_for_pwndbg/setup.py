@@ -10,7 +10,7 @@ here = pathlib.Path(__file__).parent.resolve()
 
 setup(
     name="lldb-for-pwndbg",
-    version="20.1.8.post2",
+    version="21.1.0.post1",
     url="https://github.com/pwndbg/pypi-for-pwndbg",
 
     package_dir={"": "src"},  # Optional
