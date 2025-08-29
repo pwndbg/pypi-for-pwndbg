@@ -6,6 +6,7 @@
   buildPackages,
 
   version,
+  pypiVersion,
   monorepoSrc ? null,
 
   cmake,
@@ -46,6 +47,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   passthru = {
     pythonVersion = python3.pythonVersion;
     python = python3;
+    pypiVersion = pypiVersion;
   };
 
   patches = [

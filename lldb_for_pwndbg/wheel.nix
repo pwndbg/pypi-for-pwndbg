@@ -10,7 +10,9 @@
   darwin,
 }:
 let
-  lldbMajorMinorVersion = "${lib.versions.major lldb_drv.version}.${lib.versions.minor lldb_drv.version}";
+  lldbMajorMinorVersionArr = lib.versions.splitVersion lldb_drv.version;
+  lldbPatchSuffix = if (builtins.length lldbMajorMinorVersionArr) >= 4 then (builtins.elemAt lldbMajorMinorVersionArr 3) else "";
+  lldbMajorMinorVersion = "${builtins.elemAt lldbMajorMinorVersionArr 0}.${builtins.elemAt lldbMajorMinorVersionArr 1}${lldbPatchSuffix}";
 
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
   interpreterPath =
@@ -32,13 +34,6 @@ let
     }
     .${stdenv.targetPlatform.system};
 
-  wheelVersion =
-    let
-      versionFile = builtins.readFile ./setup.py;
-      versionMatch = builtins.match ".*\n[\t ]*version=\"([0-9]+.[0-9]+.[0-9]+(.[a-z0-9]+)?)\".*" versionFile;
-      version = if versionMatch == null then "unknown" else (builtins.elemAt versionMatch 0);
-    in
-    version;
 in
 runCommand "build-wheel"
   {
@@ -65,6 +60,9 @@ runCommand "build-wheel"
     mkdir build
     cd build
     cp ${./setup.py} setup.py
+    substituteInPlace setup.py \
+      --replace-fail '@version@' "${lldb_drv.pypiVersion}"
+
     cp ${./MANIFEST.in} MANIFEST.in
     cp -rf ${./src} src
     chmod -R +w ./src/
@@ -144,5 +142,5 @@ runCommand "build-wheel"
 
     python3 setup.py bdist_wheel
     mkdir $out
-    mv dist/*.whl $out/lldb_for_pwndbg-${wheelVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}.whl
+    mv dist/*.whl $out/lldb_for_pwndbg-${lldb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}.whl
   ''

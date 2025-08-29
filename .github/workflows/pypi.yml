@@ -11,6 +11,7 @@ on:
         options:
         - gdb
         - lldb
+        - lldb_dev
         - all
       osType:
         description: 'What os?'
@@ -106,6 +107,76 @@ jobs:
           lldb_wheel.312,
           lldb_wheel.313,
           lldb_wheel.314,
+        ]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 260
+    environment:
+      name: pypi
+      url: https://pypi.org/p/lldb-for-pwndbg
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - name: skip if
+      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
+      run: exit 1
+
+    - name: Free Disk Space (Ubuntu)
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
+    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+
+    - name: build
+      run: nix build '.#${{ matrix.attribute }}' -L -o ./result
+
+    - name: dist
+      run: |
+        mkdir dist
+        cp ./result/*.whl ./dist/
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
+      with:
+        name: ${{ matrix.os }}_${{ matrix.attribute }}
+        retention-days: 90
+        path: ./dist/*
+
+    - name: Publish package distributions to PyPI
+      run: |
+        nix run nixpkgs#uv -- tool run twine upload dist/*
+
+  releases-lldb_dev:
+    if: inputs.buildType == 'lldb_dev' || inputs.buildType == 'all'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,  # x86_64-linux
+          ubuntu-24.04-arm,  # aarch64-linux
+
+          macos-13,  # x86_64-darwin
+          macos-15,  # aarch64-darwin
+        ]
+        attribute: [
+          lldb_dev_wheel.310,
+          lldb_dev_wheel.311,
+          lldb_dev_wheel.312,
+          lldb_dev_wheel.313,
+          lldb_dev_wheel.314,
         ]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 260
