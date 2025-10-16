@@ -30,14 +30,6 @@ let
       "aarch64-darwin" = "macosx_11_0_arm64";
     }
     .${stdenv.targetPlatform.system};
-
-  wheelVersion =
-    let
-      versionFile = builtins.readFile ./setup.py;
-      versionMatch = builtins.match ".*\n[\t ]*version=\"([0-9]+.[0-9]+.[0-9]+(.[a-z0-9]+)?)\".*" versionFile;
-      version = if versionMatch == null then "unknown" else (builtins.elemAt versionMatch 0);
-    in
-    version;
 in
 runCommand "build-wheel"
   {
@@ -64,6 +56,9 @@ runCommand "build-wheel"
     mkdir build
     cd build
     cp ${./setup.py} setup.py
+    substituteInPlace setup.py \
+      --replace-fail '@version@' "${gdb_drv.pypiVersion}"
+
     cp ${./MANIFEST.in} MANIFEST.in
     cp -rf ${./src} src
     chmod -R +w ./src/
@@ -128,5 +123,5 @@ runCommand "build-wheel"
 
     python3 setup.py bdist_wheel
     mkdir $out
-    mv dist/*.whl $out/gdb_for_pwndbg-${wheelVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}.whl
+    mv dist/*.whl $out/gdb_for_pwndbg-${gdb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}.whl
   ''

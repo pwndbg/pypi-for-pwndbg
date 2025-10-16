@@ -11,8 +11,8 @@ stdenv.mkDerivation {
     src =  fetchFromGitHub {
       owner = "pwndbg";
       repo = "debuginfod-zig";
-      rev = "f929387eb889108baa370d83d9ca66a607f1aea7";
-      hash = "sha256-hbQQ0EeulmCYvJQwjXu/FE+gaqCq7KM8CgEpFwI2Ac4=";
+      rev = "3c1ea47a45c3e9e891b5c00f53373cd51bd69e45";
+      hash = "sha256-kXW98KHB3gq9Xeo/VEzZ/zW7tVhcRFXKcPOLf/KIVDI=";
 #      hash = lib.fakeHash;
     };
 

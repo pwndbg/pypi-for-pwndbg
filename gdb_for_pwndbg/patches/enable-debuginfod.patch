@@ -16,7 +16,7 @@ diff --git a/gdb/debuginfod-support.c b/gdb/debuginfod-support.c
  {
 +	const char* is_empty_env = getenv(DEBUGINFOD_URLS_ENV_VAR);
 +	if (is_empty_env == nullptr || *is_empty_env == '\0') {
-+		setenv(DEBUGINFOD_URLS_ENV_VAR, "https://debuginfod.elfutils.org", 1);
++		setenv(DEBUGINFOD_URLS_ENV_VAR, "https://debuginfod.pwndbg.re", 1);
 +	}
    const char *urls = skip_spaces (getenv (DEBUGINFOD_URLS_ENV_VAR));
 

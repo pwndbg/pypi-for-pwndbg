@@ -1,4 +1,8 @@
 {
+  version,
+  pypiVersion,
+  src,
+
   lib,
   stdenv,
   stdenvNoCC,
@@ -37,12 +41,7 @@ let
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "gdb";
-  version = "16.3";
-
-  src = fetchurl {
-    url = "mirror://gnu/gdb/gdb-${finalAttrs.version}.tar.xz";
-    hash = "sha256-vPzQlVKKmHkXrPn/8/FnIYFpSSbMGNYJyZ0AQsACJMU=";
-  };
+  inherit version src;
 
   patches = [
     ./patches/gdb-fix-cross-python.patch
@@ -84,6 +83,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   passthru = {
     pythonVersion = python3.pythonVersion;
     python = python3;
+    pypiVersion = pypiVersion;
   };
 
   env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " (
