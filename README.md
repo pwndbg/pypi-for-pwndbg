@@ -20,6 +20,5 @@ where `post{fix_number}` indicates our patch or fix release.
 - macos, x86_64, aarch64
 
 ## What is missing:
-- debuginfod
 - linux-musl is not supported
 - windows is not supported

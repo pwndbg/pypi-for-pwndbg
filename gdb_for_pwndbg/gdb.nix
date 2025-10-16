@@ -4,6 +4,7 @@
   stdenvNoCC,
   targetPackages,
   pkgsStatic,
+  pkgsBuildHost,
 
   # Build time
   fetchurl,
@@ -13,6 +14,7 @@
 
   breakpointHook,
   python3,
+  libcxx,
 
   safePaths ? [
     # $debugdir:$datadir/auto-load are whitelisted by default by GDB
@@ -26,6 +28,8 @@ let
   # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
   # then loads /some-path/lib/gconv/UTF-32.so dynamically.
   libiconv = pkgsStatic.libiconvReal;
+
+  libdebuginfod = pkgsBuildHost.callPackage ./libdebuginfod-zig.nix {};
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -44,11 +48,12 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/gdb-fix-cross-python.patch
     ./patches/enable-silent.patch
     ./patches/darwin-target-match.patch
+    ./patches/enable-debuginfod.patch
   ];
 
   postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
     substituteInPlace gdb/darwin-nat.c \
-      --replace '#include "bfd/mach-o.h"' '#include "mach-o.h"'
+      --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
   '';
 
   strictDeps = true;
@@ -71,6 +76,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.zstd
     pkgsStatic.xz
     pkgsStatic.sourceHighlight
+    libdebuginfod
 
     python3
   ];
@@ -99,7 +105,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
       "-nostdlib++"
-      "-Wl,${stdenv.cc.libcxx}/lib/libc++.a,${stdenv.cc.libcxx}/lib/libc++abi.a"
+      "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
     ]
   );
 
@@ -140,7 +146,9 @@ stdenvOver.mkDerivation (finalAttrs: {
       "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
 
       "--disable-sim"
+      "--disable-inprocess-agent"
       "--with-python=${python3.pythonOnBuildForHost.interpreter}"
+      "--with-debuginfod=yes"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       "--target=x86_64-apple-darwin"
