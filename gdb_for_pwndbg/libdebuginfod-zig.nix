@@ -30,9 +30,9 @@ stdenv.mkDerivation {
   src = fetchFromGitHub {
     owner = "pwndbg";
     repo = "debuginfod-zig";
-    rev = "3c1ea47a45c3e9e891b5c00f53373cd51bd69e45";
-    hash = "sha256-kXW98KHB3gq9Xeo/VEzZ/zW7tVhcRFXKcPOLf/KIVDI=";
-    #      hash = lib.fakeHash;
+    rev = "df8ec9fd01cc9d61b8ffb290115ff7c14253059d";
+    hash = "sha256-+ncYCnnZypC6P4GaGYhU6PUcIYaK/kxwq0YlYa0T3G0=";
+    #          hash = lib.fakeHash;
   };
 
   zigBuildFlags = [
