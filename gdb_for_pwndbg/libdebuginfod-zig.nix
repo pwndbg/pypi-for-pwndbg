@@ -8,6 +8,7 @@ let
     zig = if stdenv.hostPlatform.system == "x86_64-darwin" then (zig_0_15.overrideAttrs (old: {
         meta = old.meta // { broken = false; };
         doCheck = false;
+        doInstallCheck = false;
     })) else zig_0_15;
 in stdenv.mkDerivation {
     name = "libdebuginfod-zig";
