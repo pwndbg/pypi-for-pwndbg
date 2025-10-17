@@ -4,7 +4,12 @@
   fetchFromGitHub,
   zig_0_15,
 }:
-stdenv.mkDerivation {
+let
+    zig = if stdenv.hostPlatform.system == "x86_64-darwin" then (zig_0_15.overrideAttrs (old: {
+        meta = old.meta // { broken = false; };
+        doCheck = false;
+    })) else zig_0_15;
+in stdenv.mkDerivation {
     name = "libdebuginfod-zig";
     version = "0.188";
 
@@ -17,6 +22,6 @@ stdenv.mkDerivation {
     };
 
     nativeBuildInputs = [
-      zig_0_15.hook
+      zig.hook
     ];
 }
