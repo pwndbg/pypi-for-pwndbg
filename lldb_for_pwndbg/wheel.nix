@@ -11,7 +11,11 @@
 }:
 let
   lldbMajorMinorVersionArr = lib.versions.splitVersion lldb_drv.version;
-  lldbPatchSuffix = if (builtins.length lldbMajorMinorVersionArr) >= 4 then (builtins.elemAt lldbMajorMinorVersionArr 3) else "";
+  lldbPatchSuffix =
+    if (builtins.length lldbMajorMinorVersionArr) >= 4 then
+      (builtins.elemAt lldbMajorMinorVersionArr 3)
+    else
+      "";
   lldbMajorMinorVersion = "${builtins.elemAt lldbMajorMinorVersionArr 0}.${builtins.elemAt lldbMajorMinorVersionArr 1}${lldbPatchSuffix}";
 
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
@@ -37,22 +41,21 @@ let
 in
 runCommand "build-wheel"
   {
-    nativeBuildInputs =
-      [
-        nukeReferences
-        (python3.withPackages (ps: [
-          ps.setuptools
-          ps.wheel
-        ]))
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isLinux [
-        bintools
-        patchelf
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isDarwin [
-        darwin.cctools
-        darwin.binutils
-      ];
+    nativeBuildInputs = [
+      nukeReferences
+      (python3.withPackages (ps: [
+        ps.setuptools
+        ps.wheel
+      ]))
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      bintools
+      patchelf
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      darwin.cctools
+      darwin.binutils
+    ];
     env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
   }
   ''
