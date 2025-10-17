@@ -33,7 +33,7 @@ let
   # then loads /some-path/lib/gconv/UTF-32.so dynamically.
   libiconv = pkgsStatic.libiconvReal;
 
-  libdebuginfod = pkgsBuildHost.callPackage ./libdebuginfod-zig.nix {};
+  libdebuginfod = pkgsBuildHost.callPackage ./libdebuginfod-zig.nix { };
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -57,13 +57,12 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   strictDeps = true;
 
-  nativeBuildInputs =
-    [
-      pkg-config
-      texinfo
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-    ];
+  nativeBuildInputs = [
+    pkg-config
+    texinfo
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+  ];
 
   buildInputs = [
     pkgsStatic.ncurses
@@ -121,38 +120,37 @@ stdenvOver.mkDerivation (finalAttrs: {
   '';
   configureScript = "../configure";
 
-  configureFlags =
-    [
-      "--program-prefix="
-      "--disable-werror"
+  configureFlags = [
+    "--program-prefix="
+    "--disable-werror"
 
-      "--enable-targets=all"
-      "--enable-64-bit-bfd"
-      "--disable-install-libbfd"
-      "--disable-shared"
-      "--enable-static"
-      "--with-system-zlib"
-      "--without-system-readline"
+    "--enable-targets=all"
+    "--enable-64-bit-bfd"
+    "--disable-install-libbfd"
+    "--disable-shared"
+    "--enable-static"
+    "--with-system-zlib"
+    "--without-system-readline"
 
-      "--with-system-gdbinit=/etc/gdb/gdbinit"
-      "--with-system-gdbinit-dir=/etc/gdb/gdbinit.d"
-      "--with-separate-debug-dir=/usr/lib/debug"
-      "--with-jit-reader-dir=/usr/lib/gdb"
-      "--with-auto-load-safe-path=${builtins.concatStringsSep ":" safePaths}"
+    "--with-system-gdbinit=/etc/gdb/gdbinit"
+    "--with-system-gdbinit-dir=/etc/gdb/gdbinit.d"
+    "--with-separate-debug-dir=/usr/lib/debug"
+    "--with-jit-reader-dir=/usr/lib/gdb"
+    "--with-auto-load-safe-path=${builtins.concatStringsSep ":" safePaths}"
 
-      "--with-gmp=${pkgsStatic.gmp.dev}"
-      "--with-mpfr=${pkgsStatic.mpfr.dev}"
-      "--with-expat"
-      "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
+    "--with-gmp=${pkgsStatic.gmp.dev}"
+    "--with-mpfr=${pkgsStatic.mpfr.dev}"
+    "--with-expat"
+    "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
 
-      "--disable-sim"
-      "--disable-inprocess-agent"
-      "--with-python=${python3.pythonOnBuildForHost.interpreter}"
-      "--with-debuginfod=yes"
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-      "--target=x86_64-apple-darwin"
-    ];
+    "--disable-sim"
+    "--disable-inprocess-agent"
+    "--with-python=${python3.pythonOnBuildForHost.interpreter}"
+    "--with-debuginfod=yes"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    "--target=x86_64-apple-darwin"
+  ];
 
   # TODO:
   # fix: --with-python=/nix/store/g61j9ws03l841jyb2wxin8ab0dqh5viv-python3-3.14.0a6

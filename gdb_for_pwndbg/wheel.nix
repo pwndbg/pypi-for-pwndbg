@@ -33,22 +33,21 @@ let
 in
 runCommand "build-wheel"
   {
-    nativeBuildInputs =
-      [
-        nukeReferences
-        (python3.withPackages (ps: [
-          ps.setuptools
-          ps.wheel
-        ]))
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isLinux [
-        bintools
-        patchelf
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isDarwin [
-        darwin.cctools
-        darwin.binutils
-      ];
+    nativeBuildInputs = [
+      nukeReferences
+      (python3.withPackages (ps: [
+        ps.setuptools
+        ps.wheel
+      ]))
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      bintools
+      patchelf
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      darwin.cctools
+      darwin.binutils
+    ];
     env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
   }
   ''
