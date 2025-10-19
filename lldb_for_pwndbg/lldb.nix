@@ -14,6 +14,7 @@
   which,
   swig,
   libedit,
+  libcxx,
 
   python3,
 
@@ -93,7 +94,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     lib.optionals stdenv.hostPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
       "-nostdlib++"
-      "-Wl,${stdenv.cc.libcxx}/lib/libc++.a,${stdenv.cc.libcxx}/lib/libc++abi.a"
+      "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
     ]
   );
 
