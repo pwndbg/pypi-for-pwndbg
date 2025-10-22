@@ -59,6 +59,21 @@
               }
             )
           );
+#          gdb_dev = (
+#            lib.genAttrs pythonVersions (
+#              v:
+#              pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
+#                python3 = pkgs."python${v}";
+#                version = "17.0";
+#                pypiVersion = "17.0.0.dev251019";
+#                src = pkgs.fetchgit {
+#                  url = "git://sourceware.org/git/binutils-gdb.git";
+#                  rev = "ba759554ff2d71c8cdd43df645abd04545c32f82";  # refs/heads/gdb-17-branch
+#                  hash = "sha256-4Hg2ltF62mzabSamPp5fR+SDbGcUqzb87DUgWuoVURs=";
+#                };
+#              }
+#            )
+#          );
           lldb = (
             lib.genAttrs pythonVersions (
               v:
@@ -81,12 +96,12 @@
               pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
                 python3 = pkgs."python${v}";
                 version = "22.0.0git";
-                pypiVersion = "22.0.0.dev1";
+                pypiVersion = "22.0.0.dev251019";
                 monorepoSrc = pkgs.fetchFromGitHub {
                   owner = "llvm";
                   repo = "llvm-project";
-                  rev = "e5948b4f805a95d129623a36f1fffd9f60ad4e37";
-                  hash = "sha256-6PeNt8t8AsfI73dPYcSn2TCYi3aSjmy+WSFmymH0GI0=";
+                  rev = "63ca2fd7a16f532a95e53780220d2eae0debb8d9";  # refs/heads/main
+                  hash = "sha256-tOczPkDDir9XMIVZ3udpBWUDuoAhHuosw79gFjH2oRU=";
                 };
               }
             )
@@ -96,6 +111,14 @@
               v:
               pkgs.callPackage ./gdb_for_pwndbg/wheel.nix {
                 gdb_drv = self.packages.${system}.gdb.${v};
+              }
+            )
+          );
+          gdb_dev_wheel = (
+            lib.genAttrs pythonVersions (
+              v:
+              pkgs.callPackage ./gdb_for_pwndbg/wheel.nix {
+                gdb_drv = self.packages.${system}.gdb_dev.${v};
               }
             )
           );
