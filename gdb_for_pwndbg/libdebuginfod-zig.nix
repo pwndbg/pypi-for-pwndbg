@@ -25,14 +25,14 @@ let
 in
 stdenv.mkDerivation {
   name = "libdebuginfod-zig";
-  version = "0.188";
+  version = "0.194";
 
   src = fetchFromGitHub {
     owner = "pwndbg";
     repo = "debuginfod-zig";
-    rev = "df8ec9fd01cc9d61b8ffb290115ff7c14253059d";
-    hash = "sha256-+ncYCnnZypC6P4GaGYhU6PUcIYaK/kxwq0YlYa0T3G0=";
-    #          hash = lib.fakeHash;
+    rev = "d5fbc578562fdad5a92e0c3d4e06c34756a226e5";
+    hash = "sha256-PyUCkqyX0vMEHOBtf1SIdarQgdKWl4WSUO6gmXB4r3U=";
+#              hash = lib.fakeHash;
   };
 
   zigBuildFlags = [
