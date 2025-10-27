@@ -19,6 +19,7 @@
   breakpointHook,
   python3,
   libcxx,
+  bintools,
 
   safePaths ? [
     # $debugdir:$datadir/auto-load are whitelisted by default by GDB
@@ -60,6 +61,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     pkg-config
     texinfo
+    bintools
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
   ];
@@ -88,6 +90,9 @@ stdenvOver.mkDerivation (finalAttrs: {
   env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " (
     [
       "-Wno-format-nonliteral"
+    ]
+    ++ lib.optionals stdenv.hostPlatform.isLinux [
+      "-Wl,--build-id=sha1"
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
     ]
@@ -161,8 +166,8 @@ stdenvOver.mkDerivation (finalAttrs: {
   # fix: --with-gdb-datadir=/nix/store/cgal8dan40165178zjzgfyahzd5hm596-gdb-16.2/share/gdb
 
   enableParallelBuilding = true;
+  separateDebugInfo = true;
 
   dontStrip = true;
   doCheck = false;
-  dontFixup = true;
 })
