@@ -152,13 +152,20 @@ stdenv.mkDerivation (finalAttrs: {
       bintools = finalAttrs.finalPackage.bintools;
       extraPackages = [ ];
       nixSupport.cc-cflags =
-        lib.optionals stdenv.targetPlatform.isLinux [
+        (let
+          target =
+            if stdenv.targetPlatform.isLinux && stdenv.targetPlatform.is32bit then
+              "${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+            else if stdenv.targetPlatform.isLinux then
+              "${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+            else if stdenv.targetPlatform.isDarwin then
+              "${stdenv.targetPlatform.parsed.cpu.name}-macos.${stdenv.targetPlatform.darwinSdkVersion}"
+            else
+              (throw "not supported target");
+        in [
           "-target"
-          "${stdenv.targetPlatform.system}-${stdenv.targetPlatform.parsed.abi.name}.2.28"
-        ]
-        ++ lib.optional (
-          stdenv.targetPlatform.isLinux && !(stdenv.targetPlatform.isStatic or false)
-        ) "-Wl,-dynamic-linker=${targetPackages.stdenv.cc.bintools.dynamicLinker}";
+          target
+        ]);
     };
 
     stdenv = overrideCC stdenv finalAttrs.finalPackage.cc;

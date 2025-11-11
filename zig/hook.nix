@@ -46,10 +46,21 @@ makeSetupHook {
             "-Doptimize=ReleaseSafe"
           else
             "-Drelease-safe=true";
+
+        target =
+          if stdenv.targetPlatform.isLinux && stdenv.targetPlatform.is32bit then
+            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+          else if stdenv.targetPlatform.isLinux then
+            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+          else if stdenv.targetPlatform.isDarwin then
+            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.name}-macos.${stdenv.targetPlatform.darwinSdkVersion}"
+          else
+            (throw "not supported target");
       in
       [
         "-Dcpu=baseline"
         releaseType
+        target
       ];
   };
 
