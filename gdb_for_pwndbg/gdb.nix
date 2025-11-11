@@ -125,6 +125,9 @@ stdenvOver.mkDerivation (finalAttrs: {
   '';
   configureScript = "../configure";
 
+  # this option break alot of cross build..
+  hardeningDisable = [ "zerocallusedregs" ];
+
   configureFlags = [
     "--program-prefix="
     "--disable-werror"

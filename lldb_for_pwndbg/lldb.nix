@@ -59,8 +59,12 @@ stdenvOver.mkDerivation (finalAttrs: {
   inherit version;
 
   src = monorepoSrc;
-  enableParallelBuilding = true;
   strictDeps = true;
+
+  enableParallelBuilding = true;
+
+  # this option break alot of cross build..
+  hardeningDisable = [ "zerocallusedregs" ];
 
   passthru = {
     pythonVersion = python3.pythonVersion;
@@ -172,5 +176,4 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   doCheck = false;
   dontStrip = true;
-  dontFixup = true;
 })
