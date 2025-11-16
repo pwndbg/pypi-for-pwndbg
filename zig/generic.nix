@@ -151,8 +151,8 @@ stdenv.mkDerivation (finalAttrs: {
       cc = finalAttrs.finalPackage.cc-unwrapped;
       bintools = finalAttrs.finalPackage.bintools;
       extraPackages = [ ];
-      nixSupport.cc-cflags =
-        (let
+      nixSupport.cc-cflags = (
+        let
           target =
             if stdenv.targetPlatform.isLinux && stdenv.targetPlatform.is32bit then
               "${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
@@ -162,10 +162,12 @@ stdenv.mkDerivation (finalAttrs: {
               "${stdenv.targetPlatform.parsed.cpu.name}-macos.${stdenv.targetPlatform.darwinSdkVersion}"
             else
               (throw "not supported target");
-        in [
+        in
+        [
           "-target"
           target
-        ]);
+        ]
+      );
     };
 
     stdenv = overrideCC stdenv finalAttrs.finalPackage.cc;

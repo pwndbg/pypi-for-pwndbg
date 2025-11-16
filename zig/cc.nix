@@ -4,7 +4,7 @@
   zig,
   stdenv,
   makeWrapper,
-  coreutils,
+  python3,
 }:
 let
   targetPrefix = lib.optionalString (
@@ -16,7 +16,10 @@ runCommand "zig-cc-${zig.version}"
     pname = "zig-cc";
     inherit (zig) version meta;
 
-    nativeBuildInputs = [ makeWrapper ];
+    nativeBuildInputs = [
+      makeWrapper
+      python3
+    ];
 
     passthru = {
       isZig = true;
@@ -30,7 +33,6 @@ runCommand "zig-cc-${zig.version}"
     for tool in cc c++ ld.lld; do
       makeWrapper "$zig/bin/zig" "$out/bin/$tool" \
         --add-flags "$tool" \
-        --suffix PATH : "${lib.makeBinPath [ coreutils ]}" \
         --run "export ZIG_GLOBAL_CACHE_DIR=\$TMPDIR"
     done
 
