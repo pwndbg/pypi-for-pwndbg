@@ -113,30 +113,28 @@
           }
         ));
 
-      overlayOthers = final: prev: {
-        libedit-static =
-          let
-            pkg =
-              (prev.libedit.override {
-                stdenv = prev.zig_glibc_2_28.stdenv;
-                ncurses = prev.pkgsStatic.ncurses;
-              }).overrideAttrs
-                (old: {
-                  # this option break alot of cross build..
-                  hardeningDisable = [ "zerocallusedregs" ];
-
-                  configureFlags = (old.configureFlags or [ ]) ++ [
-                    "--disable-shared"
-                    "--enable-static"
-                  ];
-                });
-          in
-          (if prev.stdenv.hostPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
-      };
-
       overlay = (
         final: prev: {
           zig_glibc_2_28 = (prev.callPackage ./zig { })."0.15";
+
+          libedit-static =
+            let
+              pkg =
+                (prev.libedit.override {
+                  stdenv = prev.zig_glibc_2_28.stdenv;
+                  ncurses = prev.pkgsStatic.ncurses;
+                }).overrideAttrs
+                  (old: {
+                    # this option break alot of cross build..
+                    hardeningDisable = [ "zerocallusedregs" ];
+
+                    configureFlags = (old.configureFlags or [ ]) ++ [
+                      "--disable-shared"
+                      "--enable-static"
+                    ];
+                  });
+            in
+            (if prev.stdenv.hostPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
 
           gdb-for-pwndbg = fun_gdb prev;
           wheel-gdb-for-pwndbg = fun_gdb_wheel final "gdb-for-pwndbg";
@@ -159,7 +157,6 @@
           overlays = [
             debuginfod-zig.overlays.default
             overlay
-            overlayOthers
           ];
         };
     in
