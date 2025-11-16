@@ -12,6 +12,7 @@ setup(
     name="lldb-for-pwndbg",
     version="@version@",
     url="https://github.com/pwndbg/pypi-for-pwndbg",
+    description="Prebuilt LLDB binaries for Pwndbg, ensuring reliable debugger integration, autocompletion, and IDE support.",
 
     package_dir={"": "src"},  # Optional
 
