@@ -49,7 +49,7 @@ let
           "--enable-static"
         ];
       });
-  staticLibedit = if stdenv.hostPlatform.isLinux then null else pkgsStatic.libedit;
+  staticLibedit = if stdenv.hostPlatform.isLinux then staticLibeditLinux else pkgsStatic.libedit;
 
 in
 stdenvOver.mkDerivation (finalAttrs: {
