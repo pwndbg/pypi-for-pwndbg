@@ -153,11 +153,12 @@ stdenv.mkDerivation (finalAttrs: {
       extraPackages = [ ];
       nixSupport.cc-cflags = (
         let
+          glibcVersion = if stdenv.targetPlatform.isLoongArch64 then "2.36" else "2.28";
           target =
             if stdenv.targetPlatform.isLinux && stdenv.targetPlatform.is32bit then
-              "${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+              "${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.${glibcVersion}"
             else if stdenv.targetPlatform.isLinux then
-              "${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+              "${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}.${glibcVersion}"
             else if stdenv.targetPlatform.isDarwin then
               "${stdenv.targetPlatform.parsed.cpu.name}-macos.${stdenv.targetPlatform.darwinSdkVersion}"
             else
