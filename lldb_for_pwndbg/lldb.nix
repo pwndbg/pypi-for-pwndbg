@@ -13,7 +13,7 @@
   ninja,
   which,
   swig,
-  libedit,
+  libedit-static,
   libcxx,
 
   python3,
@@ -38,21 +38,7 @@ let
   });
   staticLibxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
 
-  staticLibeditLinux =
-    (libedit.override {
-      stdenv = stdenvOver;
-      ncurses = pkgsStatic.ncurses;
-    }).overrideAttrs
-      (old: {
-        # this option break alot of cross build..
-        hardeningDisable = [ "zerocallusedregs" ];
-
-        configureFlags = (old.configureFlags or [ ]) ++ [
-          "--disable-shared"
-          "--enable-static"
-        ];
-      });
-  staticLibedit = if stdenv.hostPlatform.isLinux then staticLibeditLinux else pkgsStatic.libedit;
+  staticLibedit = if stdenv.hostPlatform.isLinux then libedit-static else pkgsStatic.libedit;
 
 in
 stdenvOver.mkDerivation (finalAttrs: {
@@ -112,10 +98,8 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.xz
     pkgsStatic.ncurses
     staticLibxml2
+    libedit-static
     python3
-  ]
-  ++ lib.optionals (staticLibedit != null) [
-    staticLibedit
   ];
 
   cmakeFlags = [
@@ -162,15 +146,13 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     (lib.cmakeBool "LLDB_ENABLE_LIBXML2" true)
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
+    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.interpreter}")
     (lib.cmakeFeature "Python3_EXECUTABLE_NATIVE" "${python3.pythonOnBuildForHost.interpreter}")
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
-  ]
-  ++ lib.optionals (staticLibedit != null) [
-    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
   ];
 
   ninjaFlags = [
