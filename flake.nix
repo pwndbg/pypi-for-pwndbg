@@ -121,7 +121,7 @@
             let
               pkg =
                 (prev.libedit.override {
-                  stdenv = prev.zig_glibc_2_28.stdenv;
+                  stdenv = final.zig_glibc_2_28.stdenv;
                   ncurses = prev.pkgsStatic.ncurses;
                 }).overrideAttrs
                   (old: {
