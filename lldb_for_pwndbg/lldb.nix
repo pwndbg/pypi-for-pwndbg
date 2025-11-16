@@ -44,6 +44,9 @@ let
       ncurses = pkgsStatic.ncurses;
     }).overrideAttrs
       (old: {
+        # this option break alot of cross build..
+        hardeningDisable = [ "zerocallusedregs" ];
+
         configureFlags = (old.configureFlags or [ ]) ++ [
           "--disable-shared"
           "--enable-static"
