@@ -150,19 +150,19 @@
           wheel-lldb_dev-for-pwndbg = fun_lldb_wheel final "lldb_dev-for-pwndbg";
         }
       );
+      overlay_flat = final: prev: (debuginfod-zig.overlays.default final prev) // (overlay final prev);
 
       fun_pkgs =
         system:
         import nixpkgs {
           inherit system;
           overlays = [
-            debuginfod-zig.overlays.default
-            overlay
+            overlay_flat
           ];
         };
     in
     {
-      overlays.default = overlay;
+      overlays.default = overlay_flat;
       packages = forAllSystems (
         system:
         let
