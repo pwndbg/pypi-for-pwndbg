@@ -131,7 +131,7 @@
                     configureFlags = (old.configureFlags or [ ]) ++ [
                       "--disable-shared"
                       "--enable-static"
-                      "--host=${stdenv.buildPlatform.config}"
+                      "--host=${prev.stdenv.buildPlatform.config}"
                     ];
                   });
             in
