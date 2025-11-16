@@ -20,6 +20,7 @@
   python3,
   libcxx,
   bintools,
+  libdebuginfod-zig-static,
 
   safePaths ? [
     # $debugdir:$datadir/auto-load are whitelisted by default by GDB
@@ -33,8 +34,6 @@ let
   # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
   # then loads /some-path/lib/gconv/UTF-32.so dynamically.
   libiconv = pkgsStatic.libiconvReal;
-
-  libdebuginfod = pkgsBuildHost.callPackage ./libdebuginfod-zig.nix { };
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -76,7 +75,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.zstd
     pkgsStatic.xz
     pkgsStatic.sourceHighlight
-    libdebuginfod
+    libdebuginfod-zig-static
 
     python3
   ];
