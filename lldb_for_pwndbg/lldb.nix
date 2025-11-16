@@ -45,11 +45,9 @@ let
     }).overrideAttrs
       (old: {
         configureFlags = (old.configureFlags or [ ]) ++ [
+          "--disable-shared"
           "--enable-static"
         ];
-        postFixup = old.postFixup + ''
-          rm -rf $out/lib/libedit.so*
-        '';
       });
   staticLibedit = if stdenv.hostPlatform.isLinux then null else pkgsStatic.libedit;
 
