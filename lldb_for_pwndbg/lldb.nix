@@ -134,7 +134,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLVM_ENABLE_LTO" false)
     (lib.cmakeBool "LLDB_ENABLE_LUA" false)
     (lib.cmakeBool "LLDB_ENABLE_SWIG" true)
-    (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
+#    (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
 
     # libc.so.6 Unable to initialize decompressor for section '.debug_abbrev'
     (lib.cmakeBool "LLVM_ENABLE_ZLIB" true)
