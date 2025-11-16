@@ -96,7 +96,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.ncurses
     staticLibxml2
     libedit-static
-    python3
+#    python3
   ];
 
   cmakeFlags = [
