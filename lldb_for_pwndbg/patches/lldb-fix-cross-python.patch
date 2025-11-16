@@ -1,23 +1,5 @@
 Subject: [PATCH] test2
 ---
-Index: lldb/cmake/modules/FindPythonAndSwig.cmake
-IDEA additional info:
-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
-<+>UTF-8
-===================================================================
-diff --git a/lldb/cmake/modules/FindPythonAndSwig.cmake b/lldb/cmake/modules/FindPythonAndSwig.cmake
---- a/lldb/cmake/modules/FindPythonAndSwig.cmake	(revision 8e2cd28cd4ba46613a46467b0c91b1cabead26cd)
-+++ b/lldb/cmake/modules/FindPythonAndSwig.cmake	(date 1763274422334)
-@@ -10,6 +10,9 @@
-     set(Python3_ROOT_DIR "${PYTHON_HOME}")
-   endif()
-   find_package(Python3 COMPONENTS Interpreter Development)
-+  if (DEFINED Python3_EXECUTABLE_NATIVE)
-+    set(Python3_EXECUTABLE "${Python3_EXECUTABLE_NATIVE}" CACHE STRING "Native Python3 executable" FORCE)
-+  endif()
-   if(Python3_FOUND AND Python3_Interpreter_FOUND)
-
-     # The install name for the Python 3 framework in Xcode is relative to
 Index: lldb/CMakeLists.txt
 IDEA additional info:
 Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP

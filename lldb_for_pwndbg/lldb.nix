@@ -134,7 +134,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLVM_ENABLE_LTO" false)
     (lib.cmakeBool "LLDB_ENABLE_LUA" false)
     (lib.cmakeBool "LLDB_ENABLE_SWIG" true)
-#    (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
+    (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
 
     # libc.so.6 Unable to initialize decompressor for section '.debug_abbrev'
     (lib.cmakeBool "LLVM_ENABLE_ZLIB" true)
@@ -145,16 +145,9 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
     (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
-#  "-DPython3_EXECUTABLE=${python3}/bin/python3"                   # interpreter (build)
-#  "-DPython3_INCLUDE_DIR=${python3_target}/include/python3.13"    # headers host
-#  "-DPython3_LIBRARY=${python3_target}/lib/libpython3.13.so"      # lib host
-#    (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.interpreter}")
-#    (lib.cmakeFeature "Python3_ROOT_DIR" "${python3}")
-#    (lib.cmakeFeature "Python3_EXECUTABLE_NATIVE" "${python3.pythonOnBuildForHost.interpreter}")
-
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
-    (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python3.13")
-    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython3.13.so")
+    (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
+    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
