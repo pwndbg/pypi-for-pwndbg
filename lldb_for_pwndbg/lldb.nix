@@ -145,7 +145,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
     (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
-#    (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.interpreter}")
+    (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.interpreter}")
     (lib.cmakeFeature "Python3_ROOT_DIR" "${python3}")
     (lib.cmakeFeature "Python3_EXECUTABLE_NATIVE" "${python3.pythonOnBuildForHost.interpreter}")
   ]
