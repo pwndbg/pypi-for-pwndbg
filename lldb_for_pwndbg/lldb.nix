@@ -74,7 +74,10 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   patches = [
     # temporary fix for: https://github.com/llvm/llvm-project/issues/155692
-    ./1.patch
+    ./patches/fix-apple-memory-mapping.patch
+
+    # todo: upstream changes?
+    ./patches/lldb-fix-cross-python.patch
   ];
 
   # See: https://github.com/ziglang/zig-bootstrap/commit/451966c163c7a2e9769d62fd77585af1bc9aca4b
@@ -108,6 +111,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkgsStatic.xz
     pkgsStatic.ncurses
     staticLibxml2
+    python3
   ]
   ++ lib.optionals (staticLibedit != null) [
     staticLibedit
@@ -141,6 +145,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLVM_ENABLE_OCAMLDOC" false)
     (lib.cmakeBool "LLVM_ENABLE_BINDINGS" false)
 
+    # https://github.com/ziglang/zig/issues/22213#issuecomment-2540597445
+    (lib.cmakeBool "CMAKE_C_LINKER_DEPFILE_SUPPORTED" false)
+    (lib.cmakeBool "CMAKE_CXX_LINKER_DEPFILE_SUPPORTED" false)
+
     (lib.cmakeBool "LLVM_ENABLE_LTO" false)
     (lib.cmakeBool "LLDB_ENABLE_LUA" false)
     (lib.cmakeBool "LLDB_ENABLE_SWIG" true)
@@ -154,7 +162,8 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_LIBXML2" true)
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
 
-    (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
+    (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.interpreter}")
+    (lib.cmakeFeature "Python3_EXECUTABLE_NATIVE" "${python3.pythonOnBuildForHost.interpreter}")
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
