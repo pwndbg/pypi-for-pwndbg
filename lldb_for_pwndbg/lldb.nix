@@ -37,9 +37,6 @@ let
     propagatedBuildInputs = [ pkgsStatic.libiconvReal ];
   });
   staticLibxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
-
-  staticLibedit = if stdenv.hostPlatform.isLinux then libedit-static else pkgsStatic.libedit;
-
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "lldb";
