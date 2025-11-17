@@ -17,6 +17,13 @@ let
       "x86_64-linux" = "/lib64/ld-linux-x86-64.so.2";
       "aarch64-linux" = "/lib/ld-linux-aarch64.so.1";
 
+      "loongarch64-linux" = "/lib64/ld-linux-loongarch-lp64d.so.1";
+      "s390x-linux" = "/lib/ld64.so.1";
+      "riscv64-linux" = "/lib/ld-linux-riscv64-lp64d.so.1";
+      "powerpc64le-linux" = "/lib64/ld64.so.2";
+      "armv7l-linux" = "/lib/ld-linux-armhf.so.3";
+      "i686-linux" = "/lib/ld-linux.so.2";
+
       "x86_64-darwin" = "";
       "aarch64-darwin" = "";
     }
@@ -25,6 +32,13 @@ let
     {
       "x86_64-linux" = "manylinux_2_28_x86_64";
       "aarch64-linux" = "manylinux_2_28_aarch64";
+
+      "loongarch64-linux" = "manylinux_2_36_loongarch64";
+      "s390x-linux" = "manylinux_2_28_s390x";
+      "riscv64-linux" = "manylinux_2_39_riscv64";
+      "powerpc64le-linux" = "manylinux_2_28_ppc64le";
+      "armv7l-linux" = "manylinux_2_31_armv7l";
+      "i686-linux" = "manylinux_2_28_i686";
 
       "x86_64-darwin" = "macosx_10_13_x86_64";
       "aarch64-darwin" = "macosx_11_0_arm64";
