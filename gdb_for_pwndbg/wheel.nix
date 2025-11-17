@@ -6,7 +6,7 @@
   nukeReferences,
   patchelf,
   python3,
-  pkgsBuildHost,
+  python3Packages,
   bintools,
   libxcrypt,
   darwin,
@@ -53,10 +53,9 @@ runCommand "build-wheel"
   {
     nativeBuildInputs = [
       nukeReferences
-      (pkgsBuildHost.python3.withPackages (ps: [
-        ps.setuptools
-        ps.wheel
-      ]))
+      python3
+      python3Packages.setuptools
+      python3Packages.wheel
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
       bintools
