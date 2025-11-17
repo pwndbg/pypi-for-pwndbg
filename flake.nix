@@ -173,6 +173,7 @@
                     hardeningDisable = [ "zerocallusedregs" ];
                     propagatedBuildInputs = [ ];
                     buildInputs = [ ];
+                    doCheck = false;
 
                     configureFlags = (old.configureFlags or [ ]) ++ [
                       "--disable-shared"

@@ -5,9 +5,7 @@
 
   lib,
   stdenv,
-  stdenvNoCC,
   targetPackages,
-  pkgsStatic,
   pkgsBuildHost,
 
   # Build time
@@ -39,7 +37,6 @@
     "$debugdir"
     "$datadir/auto-load"
   ],
-  writeScript,
 }:
 let
   isCross = stdenv.buildPlatform != stdenv.targetPlatform;
@@ -163,10 +160,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     "--with-jit-reader-dir=/usr/lib/gdb"
     "--with-auto-load-safe-path=${builtins.concatStringsSep ":" safePaths}"
 
-    "--with-gmp=${pkgsStatic.gmp.dev}"
-    "--with-mpfr=${pkgsStatic.mpfr.dev}"
+    "--with-gmp=${gmp-static.dev}"
+    "--with-mpfr=${mpfr-static.dev}"
     "--with-expat"
-    "--with-libexpat-prefix=${pkgsStatic.expat.dev}"
+    "--with-libexpat-prefix=${expat-static.dev}"
 
     "--disable-sim"
     "--disable-inprocess-agent"
