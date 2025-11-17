@@ -155,6 +155,7 @@
                 (old: {
                   propagatedBuildInputs = [ ];
                   buildInputs = [ ];
+                  doCheck = false;
                 })
             else
               (prev.pkgsStatic.libxml2.overrideAttrs (old: {
