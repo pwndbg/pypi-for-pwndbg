@@ -16,6 +16,18 @@
   texinfo,
   buildPackages,
 
+  # buildInputs:
+  libiconv-static,
+  zlib-static,
+  zstd-static,
+  xz-static,
+  expat-static,
+  ncurses-static,
+  gmp-static,
+  mpfr-static,
+  libipt-static,
+  sourceHighlight-static,
+
   breakpointHook,
   python3,
   libcxx,
@@ -30,11 +42,6 @@
   writeScript,
 }:
 let
-  # Dynamic libiconv causes issues with our portable build.
-  # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
-  # then loads /some-path/lib/gconv/UTF-32.so dynamically.
-  libiconv = pkgsStatic.libiconvReal;
-
   isCross = stdenv.buildPlatform != stdenv.targetPlatform;
 
   # For macos we use normal llvm compiler
@@ -76,15 +83,16 @@ stdenvOver.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    pkgsStatic.ncurses
-    pkgsStatic.gmp
-    pkgsStatic.mpfr
-    pkgsStatic.expat
-    pkgsStatic.libipt
-    pkgsStatic.zlib
-    pkgsStatic.zstd
-    pkgsStatic.xz
-    pkgsStatic.sourceHighlight
+    gmp-static
+    mpfr-static
+    libipt-static
+    sourceHighlight-static
+
+    ncurses-static
+    expat-static
+    zlib-static
+    zstd-static
+    xz-static
     libdebuginfod-zig-static
 
     python3
@@ -108,12 +116,12 @@ stdenvOver.mkDerivation (finalAttrs: {
   );
 
   env.CPPFLAGS = builtins.concatStringsSep " " ([
-    "-I${libiconv}/include"
+    "-I${libiconv-static}/include"
   ]);
 
   env.LDFLAGS = builtins.concatStringsSep " " (
     [
-      "-L${libiconv}/lib"
+      "-L${libiconv-static}/lib"
     ]
     ++ lib.optionals stdenv.targetPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
@@ -133,7 +141,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
       "zerocallusedregs"
     ]
-    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64) [
+    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
       "stackclashprotection"
     ];
 

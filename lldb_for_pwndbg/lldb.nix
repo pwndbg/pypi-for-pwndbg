@@ -1,9 +1,8 @@
 {
   lib,
   stdenv,
-  stdenvNoCC,
-  pkgsStatic,
   buildPackages,
+  pkgsBuildHost,
 
   version,
   pypiVersion,
@@ -13,12 +12,17 @@
   ninja,
   which,
   swig,
+
+  # buildInputs:
   libedit-static,
+  zlib-static,
+  zstd-static,
+  xz-static,
+  ncurses-static,
+  libxml2-static,
+
   libcxx,
-
   python3,
-
-  pkgsBuildHost,
 }:
 let
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
@@ -30,15 +34,6 @@ let
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
   stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
-
-  # Dynamic libiconv causes issues with our portable build.
-  # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
-  # then loads /some-path/lib/gconv/UTF-32.so dynamically.
-  # libiconv is required by libxml2
-  libxml2NonLinux = pkgsStatic.libxml2.overrideAttrs (old: {
-    propagatedBuildInputs = [ pkgsStatic.libiconvReal ];
-  });
-  staticLibxml2 = if stdenv.targetPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "lldb";
@@ -54,7 +49,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
       "zerocallusedregs"
     ]
-    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64) [
+    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
       "stackclashprotection"
     ];
 
@@ -98,11 +93,11 @@ stdenvOver.mkDerivation (finalAttrs: {
   );
 
   buildInputs = [
-    pkgsStatic.zlib
-    pkgsStatic.zstd
-    pkgsStatic.xz
-    pkgsStatic.ncurses
-    staticLibxml2
+    zlib-static
+    zstd-static
+    xz-static
+    ncurses-static
+    libxml2-static
     libedit-static
     python3
   ];
@@ -151,7 +146,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     (lib.cmakeBool "LLDB_ENABLE_LIBXML2" true)
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
-    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
+    #    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")

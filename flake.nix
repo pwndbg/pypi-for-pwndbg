@@ -117,25 +117,96 @@
         final: prev: {
           zig_glibc_2_28 = (prev.callPackage ./zig { })."0.15";
 
+          zlib-static = prev.pkgsStatic.zlib;
+          zstd-static = prev.pkgsStatic.zstd;
+          xz-static = prev.pkgsStatic.xz;
+          gmp-static = prev.pkgsStatic.gmp;
+          mpfr-static = prev.pkgsStatic.mpfr;
+          libipt-static = prev.pkgsStatic.libipt;
+          sourceHighlight-static = prev.pkgsStatic.sourceHighlight;
+
+          # Dynamic libiconv causes issues with our portable build.
+          # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
+          # then loads /some-path/lib/gconv/UTF-32.so dynamically.
+          libiconv-static = prev.pkgsStatic.libiconvReal;
+
+          ncurses-static =
+            let
+              pkg =
+                (prev.ncurses.override {
+                  enableStatic = true;
+                }).overrideAttrs
+                  (old: {
+                    propagatedBuildInputs = [ ];
+                    buildInputs = [ ];
+                    configureFlags = (old.configureFlags or [ ]) ++ [
+                      "--disable-shared"
+                    ];
+                  });
+            in
+            (if prev.stdenv.targetPlatform.isLinux then pkg else prev.pkgsStatic.ncurses);
+
+          libxml2-static =
+            if prev.stdenv.targetPlatform.isLinux then
+              (prev.libxml2.override {
+                enableStatic = true;
+                enableShared = false;
+              }).overrideAttrs
+                (old: {
+                  propagatedBuildInputs = [ ];
+                  buildInputs = [ ];
+                })
+            else
+              (prev.pkgsStatic.libxml2.overrideAttrs (old: {
+                # libiconv is required by libxml2
+                propagatedBuildInputs = [ final.libiconv-static ];
+                buildInputs = [ ];
+              }));
+
+          expat-static =
+            let
+              pkg =
+                (prev.expat.override {
+                  stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
+                }).overrideAttrs
+                  (old: {
+                    hardeningDisable = [ "zerocallusedregs" ];
+                    propagatedBuildInputs = [ ];
+                    buildInputs = [ ];
+
+                    configureFlags = (old.configureFlags or [ ]) ++ [
+                      "--disable-shared"
+                      "--enable-static"
+                      "--target=${prev.stdenv.targetPlatform.config}"
+                      "--host=${prev.stdenv.targetPlatform.config}"
+                      "--build=${prev.stdenv.buildPlatform.config}"
+                    ];
+                  });
+            in
+            (if prev.stdenv.targetPlatform.isLinux then pkg else prev.pkgsStatic.expat);
+
           libedit-static =
             let
               pkg =
                 (prev.libedit.override {
                   stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
-                  ncurses = prev.pkgsStatic.ncurses;
+                  ncurses = final.ncurses-static;
                 }).overrideAttrs
                   (old: {
-                    # this option break alot of cross build..
                     hardeningDisable = [ "zerocallusedregs" ];
+                    propagatedBuildInputs = [ final.ncurses-static ];
+                    buildInputs = [ ];
 
                     configureFlags = (old.configureFlags or [ ]) ++ [
                       "--disable-shared"
                       "--enable-static"
-                      "--host=${prev.stdenv.hostPlatform.config}"
+                      "--target=${prev.stdenv.targetPlatform.config}"
+                      "--host=${prev.stdenv.targetPlatform.config}"
+                      "--build=${prev.stdenv.buildPlatform.config}"
                     ];
                   });
             in
-            (if prev.stdenv.hostPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
+            (if prev.stdenv.targetPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
 
           gdb-for-pwndbg = fun_gdb prev;
           wheel-gdb-for-pwndbg = fun_gdb_wheel final "gdb-for-pwndbg";
