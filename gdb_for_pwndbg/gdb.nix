@@ -168,7 +168,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   # TODO: __init__.py powinno zwraca komunikat jakis lepszy jak _gdb import sie wywali
   # fix: --with-gdb-datadir=/nix/store/cgal8dan40165178zjzgfyahzd5hm596-gdb-16.2/share/gdb
 
-  enableParallelBuilding = false;
+  enableParallelBuilding = true;
   separateDebugInfo = true;
 
   dontStrip = true;
