@@ -59,6 +59,12 @@ libpython_dependencies = {
         "linux": [
             "_lldb.cpython-310-x86_64-linux-gnu.so",
             "_lldb.cpython-310-aarch64-linux-gnu.so",
+            "_lldb.cpython-310-loongarch64-linux-gnu.so",
+            "_lldb.cpython-310-arm-linux-gnueabihf.so",
+            "_lldb.cpython-310-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-310-s390x-linux-gnu.so",
+            "_lldb.cpython-310-i386-linux-gnu.so",
+            "_lldb.cpython-310-riscv64-linux-gnu.so",
             "libpython3.10.so.1.0",
         ],
         "darwin": [
@@ -71,6 +77,12 @@ libpython_dependencies = {
         "linux": [
             "_lldb.cpython-311-x86_64-linux-gnu.so",
             "_lldb.cpython-311-aarch64-linux-gnu.so",
+            "_lldb.cpython-311-loongarch64-linux-gnu.so",
+            "_lldb.cpython-311-arm-linux-gnueabihf.so",
+            "_lldb.cpython-311-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-311-s390x-linux-gnu.so",
+            "_lldb.cpython-311-i386-linux-gnu.so",
+            "_lldb.cpython-311-riscv64-linux-gnu.so",
             "libpython3.11.so.1.0",
         ],
         "darwin": [
@@ -83,6 +95,12 @@ libpython_dependencies = {
         "linux": [
             "_lldb.cpython-312-x86_64-linux-gnu.so",
             "_lldb.cpython-312-aarch64-linux-gnu.so",
+            "_lldb.cpython-312-loongarch64-linux-gnu.so",
+            "_lldb.cpython-312-arm-linux-gnueabihf.so",
+            "_lldb.cpython-312-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-312-s390x-linux-gnu.so",
+            "_lldb.cpython-312-i386-linux-gnu.so",
+            "_lldb.cpython-312-riscv64-linux-gnu.so",
             "libpython3.12.so.1.0",
         ],
         "darwin": [
@@ -95,6 +113,12 @@ libpython_dependencies = {
         "linux": [
             "_lldb.cpython-313-x86_64-linux-gnu.so",
             "_lldb.cpython-313-aarch64-linux-gnu.so",
+            "_lldb.cpython-313-loongarch64-linux-gnu.so",
+            "_lldb.cpython-313-arm-linux-gnueabihf.so",
+            "_lldb.cpython-313-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-313-s390x-linux-gnu.so",
+            "_lldb.cpython-313-i386-linux-gnu.so",
+            "_lldb.cpython-313-riscv64-linux-gnu.so",
             "libpython3.13.so.1.0",
         ],
         "darwin": [
@@ -107,6 +131,12 @@ libpython_dependencies = {
         "linux": [
             "_lldb.cpython-314-x86_64-linux-gnu.so",
             "_lldb.cpython-314-aarch64-linux-gnu.so",
+            "_lldb.cpython-314-loongarch64-linux-gnu.so",
+            "_lldb.cpython-314-arm-linux-gnueabihf.so",
+            "_lldb.cpython-314-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-314-s390x-linux-gnu.so",
+            "_lldb.cpython-314-i386-linux-gnu.so",
+            "_lldb.cpython-314-riscv64-linux-gnu.so",
             "libpython3.14.so.1.0",
         ],
         "darwin": [
