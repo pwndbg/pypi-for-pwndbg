@@ -7,7 +7,6 @@
   patchelf,
   python3,
   python3Packages,
-  pkgsBuildHost,
   bintools,
   darwin,
 }:
@@ -61,7 +60,6 @@ in
 runCommand "build-wheel"
   {
     nativeBuildInputs = [
-      callPackage
       nukeReferences
       python3
       python3Packages.setuptools
