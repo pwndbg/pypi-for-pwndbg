@@ -35,9 +35,11 @@ let
   # then loads /some-path/lib/gconv/UTF-32.so dynamically.
   libiconv = pkgsStatic.libiconvReal;
 
+  isCross = stdenv.buildPlatform != stdenv.targetPlatform;
+
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
-  stdenvOver = if stdenv.hostPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
+  stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "gdb";
@@ -50,9 +52,15 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/enable-debuginfod.patch
   ];
 
-  postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+  postPatch = lib.optionalString stdenv.targetPlatform.isDarwin ''
     substituteInPlace gdb/darwin-nat.c \
       --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
+
+    #substituteInPlace libiberty/filedescriptor.c \
+    #  --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
+    #substituteInPlace libiberty/fibheap.c \
+    #  --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
+    # HAVE_LIMITS_H
   '';
 
   strictDeps = true;
@@ -64,7 +72,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     texinfo
     bintools
   ]
-  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+  ++ lib.optionals stdenv.targetPlatform.isDarwin [
   ];
 
   buildInputs = [
@@ -92,10 +100,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     [
       "-Wno-format-nonliteral"
     ]
-    ++ lib.optionals stdenv.hostPlatform.isLinux [
+    ++ lib.optionals stdenv.targetPlatform.isLinux [
       "-Wl,--build-id=sha1"
     ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    ++ lib.optionals stdenv.targetPlatform.isDarwin [
     ]
   );
 
@@ -107,7 +115,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     [
       "-L${libiconv}/lib"
     ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+    ++ lib.optionals stdenv.targetPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
       "-nostdlib++"
       "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
@@ -121,7 +129,13 @@ stdenvOver.mkDerivation (finalAttrs: {
   configureScript = "../configure";
 
   # this option break alot of cross build..
-  hardeningDisable = [ "zerocallusedregs" ];
+  hardeningDisable =
+    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
+      "zerocallusedregs"
+    ]
+    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64) [
+      "stackclashprotection"
+    ];
 
   configureFlags = [
     "--program-prefix="
@@ -151,10 +165,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     "--with-python=${python3.pythonOnBuildForHost.interpreter}"
     "--with-debuginfod=yes"
   ]
-  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+  ++ lib.optionals stdenv.targetPlatform.isDarwin [
     "--target=x86_64-apple-darwin"
   ]
-  ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+  ++ lib.optionals (!stdenv.targetPlatform.isDarwin) [
     "--target=${stdenv.targetPlatform.config}"
     "--host=${stdenv.targetPlatform.config}"
     "--build=${stdenv.buildPlatform.config}"

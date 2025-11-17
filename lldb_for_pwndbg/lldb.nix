@@ -25,9 +25,11 @@ let
     inherit version monorepoSrc;
   };
 
+  isCross = stdenv.buildPlatform != stdenv.targetPlatform;
+
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
-  stdenvOver = if stdenv.hostPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
+  stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
 
   # Dynamic libiconv causes issues with our portable build.
   # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
@@ -36,7 +38,7 @@ let
   libxml2NonLinux = pkgsStatic.libxml2.overrideAttrs (old: {
     propagatedBuildInputs = [ pkgsStatic.libiconvReal ];
   });
-  staticLibxml2 = if stdenv.hostPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
+  staticLibxml2 = if stdenv.targetPlatform.isLinux then pkgsStatic.libxml2 else libxml2NonLinux;
 in
 stdenvOver.mkDerivation (finalAttrs: {
   pname = "lldb";
@@ -48,7 +50,13 @@ stdenvOver.mkDerivation (finalAttrs: {
   enableParallelBuilding = true;
 
   # this option break alot of cross build..
-  hardeningDisable = [ "zerocallusedregs" ];
+  hardeningDisable =
+    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
+      "zerocallusedregs"
+    ]
+    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64) [
+      "stackclashprotection"
+    ];
 
   passthru = {
     pythonVersion = python3.pythonVersion;
@@ -82,7 +90,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   ];
 
   env.LDFLAGS = builtins.concatStringsSep " " (
-    lib.optionals stdenv.hostPlatform.isDarwin [
+    lib.optionals stdenv.targetPlatform.isDarwin [
       # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
       "-nostdlib++"
       "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
@@ -149,7 +157,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
     (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
-  ++ lib.optionals stdenv.hostPlatform.isDarwin [
+  ++ lib.optionals stdenv.targetPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
   ];
 
