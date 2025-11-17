@@ -12,6 +12,9 @@
 }:
 let
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
+  targetPrefix = lib.optionalString (
+    stdenv.buildPlatform != stdenv.targetPlatform
+  ) "${stdenv.targetPlatform.config}-";
   interpreterPath =
     {
       "x86_64-linux" = "/lib64/ld-linux-x86-64.so.2";
@@ -121,11 +124,11 @@ runCommand "build-wheel"
         fi
     fi
 
-    strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    ${targetPrefix}strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
     nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
     if [ "$IS_LINUX" -eq 1 ]; then
-        strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        ${targetPrefix}strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
         nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
     fi
 

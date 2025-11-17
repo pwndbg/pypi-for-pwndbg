@@ -10,6 +10,9 @@
   darwin,
 }:
 let
+  targetPrefix = lib.optionalString (
+    stdenv.buildPlatform != stdenv.targetPlatform
+  ) "${stdenv.targetPlatform.config}-";
   lldbMajorMinorVersionArr = lib.versions.splitVersion lldb_drv.version;
   lldbPatchSuffix =
     if (builtins.length lldbMajorMinorVersionArr) >= 4 then
@@ -137,15 +140,15 @@ runCommand "build-wheel"
             ./src/lldb_for_pwndbg/_vendor/bin/lldb
     fi
 
-    strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
+    ${targetPrefix}strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
     nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
     if [ "$IS_LINUX" -eq 1 ]; then
-        strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+        ${targetPrefix}strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
     fi
 
-    strip -S ./src/lldb/$lldb_python_so
+    ${targetPrefix}strip -S ./src/lldb/$lldb_python_so
     nuke-refs ./src/lldb/$lldb_python_so
 
     # this file is unused
