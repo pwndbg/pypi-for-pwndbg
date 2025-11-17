@@ -112,12 +112,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     ]
   );
 
-  configurePlatforms = lib.optionals (!stdenv.hostPlatform.isDarwin) [
-    "build"
-    "host"
-    "target"
-  ];
-
   preConfigure = ''
     mkdir _build
     cd _build
@@ -157,6 +151,11 @@ stdenvOver.mkDerivation (finalAttrs: {
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "--target=x86_64-apple-darwin"
+  ]
+  ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
+    "--target=${stdenv.targetPlatform.config}"
+    "--host=${stdenv.targetPlatform.config}"
+    "--build=${stdenv.buildPlatform.config}"
   ];
 
   # TODO:
