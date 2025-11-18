@@ -14,6 +14,17 @@ The debugger binaries shipped in these wheels are built specifically to ensure:
 
 The goal is simple: **a zero-friction debugging experience with Pwndbg**, without worrying about system debugger compatibility.
 
+## How to use
+
+If you're using **uv**, you can run the debuggers directly from the packages without installing anything system-wide:
+
+```bash
+uvx --from gdb-for-pwndbg gdb
+```
+or for LLDB:
+```bash
+uvx --from lldb-for-pwndbg lldb
+```
 
 ## Versioning
 The package version follows the format:
@@ -26,14 +37,18 @@ where `post{fix_number}` indicates our patch or fix release.
   - Package: `gdb-for-pwndbg==16.3.0.post1`  
     *(post1 = first custom fix)*
 - **LLDB**
-  - Upstream: `LLDB 20.1.8`
-  - Package: `gdb-for-pwndbg==20.1.8.post1`  
+  - Upstream: `LLDB 21.1.5`
+  - Package: `gdb-for-pwndbg==21.1.5.post1`  
     *(post1 = first custom fix)*
 
 
 ## What is supported:
-- linux (glibc 2.28>=), x86_64, aarch64
+- linux (glibc 2.28>=), x86_64, aarch64, s390x, powerpc64le, i686
+- linux (glibc 2.31>=), armv7l
+- linux (glibc 2.36>=), loongarch64
+- linux (glibc 2.39>=), riscv64
 - macos, x86_64, aarch64
+
 
 ## What is missing:
 - linux-musl is not supported
