@@ -160,13 +160,20 @@
           libxml2-static =
             if prev.stdenv.targetPlatform.isLinux then
               (prev.libxml2.override {
+                stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
                 enableStatic = true;
                 enableShared = false;
               }).overrideAttrs
                 (old: {
+                  hardeningDisable = [ "zerocallusedregs" ];
                   propagatedBuildInputs = [ ];
                   buildInputs = [ ];
                   doCheck = false;
+                  configureFlags = (old.configureFlags or [ ]) ++ [
+                    "--target=${prev.stdenv.targetPlatform.config}"
+                    "--host=${prev.stdenv.targetPlatform.config}"
+                    "--build=${prev.stdenv.buildPlatform.config}"
+                  ];
                 })
             else
               (prev.pkgsStatic.libxml2.overrideAttrs (old: {
