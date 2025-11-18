@@ -116,6 +116,7 @@
       overlay = (
         final: prev: {
           zig_glibc_2_28 = (prev.callPackage ./zig { })."0.15";
+          libclang_rt_ppc_builtins = prev.callPackage ./zig/libclang_rt_ppc_builtins.nix { };
 
           zlib-static = prev.pkgsStatic.zlib;
           zstd-static = prev.pkgsStatic.zstd;
@@ -134,13 +135,23 @@
             let
               pkg =
                 (prev.ncurses.override {
+                  stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
                   enableStatic = true;
                 }).overrideAttrs
                   (old: {
+                    hardeningDisable = [ "zerocallusedregs" ];
                     propagatedBuildInputs = [ ];
                     buildInputs = [ ];
+                    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
+                      prev.pkgsBuildHost.ncurses
+                    ];
+                    configurePlatforms = [ ];
                     configureFlags = (old.configureFlags or [ ]) ++ [
                       "--disable-shared"
+                      "--enable-static"
+                      "--target=${prev.stdenv.targetPlatform.config}"
+                      "--host=${prev.stdenv.targetPlatform.config}"
+                      "--build=${prev.stdenv.buildPlatform.config}"
                     ];
                   });
             in
