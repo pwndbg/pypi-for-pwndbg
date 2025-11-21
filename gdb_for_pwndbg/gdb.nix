@@ -102,6 +102,9 @@ stdenvOver.mkDerivation (finalAttrs: {
     pypiVersion = pypiVersion;
   };
 
+  # since py3.14 probably this is required for cross compilation
+  env._PYTHON_PROJECT_BASE = "${python3}";
+
   env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " (
     [
       "-Wno-format-nonliteral"
