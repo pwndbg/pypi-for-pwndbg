@@ -47,11 +47,21 @@ makeSetupHook {
           else
             "-Drelease-safe=true";
 
+        glibcVersion = if stdenv.targetPlatform.isLoongArch64 then ".2.36" else ".2.28";
+        muslVersion = if stdenv.targetPlatform.isLoongArch64 then "" else "";
+        abiVersion =
+          if stdenv.targetPlatform.isGnu then
+            glibcVersion
+          else if stdenv.targetPlatform.isMusl then
+            muslVersion
+          else
+            (throw "not supported abi version ${stdenv.targetPlatform.parsed.abi.name}");
+
         target =
           if stdenv.targetPlatform.isLinux && stdenv.targetPlatform.is32bit then
-            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.family}-linux-${stdenv.targetPlatform.parsed.abi.name}${abiVersion}"
           else if stdenv.targetPlatform.isLinux then
-            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}.2.28"
+            "-Dtarget=${stdenv.targetPlatform.parsed.cpu.name}-linux-${stdenv.targetPlatform.parsed.abi.name}${abiVersion}"
           else if stdenv.targetPlatform.isDarwin then
             "-Dtarget=${stdenv.targetPlatform.parsed.cpu.name}-macos.${stdenv.targetPlatform.darwinSdkVersion}"
           else
