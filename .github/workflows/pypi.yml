@@ -90,7 +90,7 @@ jobs:
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
-        name: ${{ matrix.os }}_${{ matrix.attribute }}_gdb
+        name: ${{ matrix.os }}_${{ matrix.architecture }}_gdb
         retention-days: 90
         path: ./dist/*
 
@@ -170,7 +170,7 @@ jobs:
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
-        name: ${{ matrix.os }}_${{ matrix.attribute }}
+        name: ${{ matrix.os }}_${{ matrix.architecture }}_${{ matrix.version }}
         retention-days: 90
         path: ./dist/*
 #
