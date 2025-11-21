@@ -1,9 +1,9 @@
---- a/gdb/python/python-config.py	(revision fa93e88f754e10dfb60dd4c9bf9cef858d4c7e4a)
-+++ b/gdb/python/python-config.py	(revision 1605cab3f0f578a75778efdc4c380bbb8463ad6f)
+--- a/gdb/python/python-config.py	(revision b61f17e6951ff630bc9090b0e82ec9b551497f92)
++++ b/gdb/python/python-config.py	(date 1763714357526)
 @@ -1,6 +1,15 @@
  # Program to fetch python compilation parameters.
  # Copied from python-config of the 2.7 release.
-
+ 
 +# In this script, we should only use the following to retrieve configuration values:
 +# - `sysconfig.get_config_var`
 +# - `sysconfig.get_platform`
@@ -17,25 +17,25 @@
  import os
  import sys
 @@ -26,7 +35,7 @@
-
+ 
  pyver = sysconfig.get_config_var("VERSION")
  getvar = sysconfig.get_config_var
 -abiflags = getattr(sys, "abiflags", "")
 +abiflags = getvar("ABIFLAGS")
-
+ 
  opt_flags = [flag for (flag, val) in opts]
-
+ 
 @@ -49,15 +58,14 @@
-
+ 
  for opt in opt_flags:
      if opt == "--prefix":
 -        print(to_unix_path(os.path.normpath(sys.prefix)))
 +        print(to_unix_path(os.path.normpath(getvar("prefix"))))
-
+ 
      elif opt == "--exec-prefix":
 -        print(to_unix_path(os.path.normpath(sys.exec_prefix)))
 +        print(to_unix_path(os.path.normpath(getvar("exec_prefix"))))
-
+ 
      elif opt in ("--includes", "--cflags"):
          flags = [
 -            "-I" + sysconfig.get_path("include"),
@@ -44,6 +44,15 @@
          ]
          if opt == "--cflags":
              flags.extend(getvar("CFLAGS").split())
+@@ -65,7 +73,7 @@
+ 
+     elif opt in ("--libs", "--ldflags"):
+         libs = ["-lpython" + pyver + abiflags]
+-        if getvar("LIBS") is not None:
++        if getvar("LIBS") is not None and pyver != "3.12":
+             libs.extend(getvar("LIBS").split())
+         if getvar("SYSLIBS") is not None:
+             libs.extend(getvar("SYSLIBS").split())
 @@ -76,7 +84,7 @@
                  if getvar("LIBPL") is not None:
                      libs.insert(0, "-L" + getvar("LIBPL"))

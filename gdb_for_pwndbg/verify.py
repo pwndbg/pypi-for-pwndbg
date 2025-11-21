@@ -61,7 +61,6 @@ libpython_dependencies = {
         ],
         "darwin": [
             "@executable_path/../../../../../../lib/libpython3.10.dylib",
-            "@executable_path/../lib/libcrypt.2.dylib",
         ],
     },
     "3.11": {

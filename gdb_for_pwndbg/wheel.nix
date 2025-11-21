@@ -100,28 +100,12 @@ runCommand "build-wheel"
         patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
         patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
-
-        if [ "$PY_VERSION" -eq "310" ]; then
-            # libcrypt is not needed for `gdb`, only libpython still is depending on it
-            patchelf --remove-needed 'libcrypt.so.2' ./src/gdb_for_pwndbg/_vendor/bin/gdb
-        fi
     else
         install_name_tool \
             -change \
             ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
             '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
             ./src/gdb_for_pwndbg/_vendor/bin/gdb
-
-        if [ "$PY_VERSION" -eq "310" ]; then
-            mkdir -p ./src/gdb_for_pwndbg/_vendor/lib
-            cp ${libxcrypt}/lib/libcrypt.2.dylib ./src/gdb_for_pwndbg/_vendor/lib/
-
-            install_name_tool \
-                -change \
-                ${libxcrypt}/lib/libcrypt.2.dylib \
-                '@executable_path/../lib/libcrypt.2.dylib' \
-                ./src/gdb_for_pwndbg/_vendor/bin/gdb
-        fi
     fi
 
     ${targetPrefix}strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
