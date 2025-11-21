@@ -49,7 +49,7 @@
      elif opt in ("--libs", "--ldflags"):
          libs = ["-lpython" + pyver + abiflags]
 -        if getvar("LIBS") is not None:
-+        if getvar("LIBS") is not None and pyver != "3.12":
++        if getvar("LIBS") is not None and pyver != "3.10":
              libs.extend(getvar("LIBS").split())
          if getvar("SYSLIBS") is not None:
              libs.extend(getvar("SYSLIBS").split())
