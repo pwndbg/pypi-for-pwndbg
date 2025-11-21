@@ -127,8 +127,22 @@ jobs:
           # aarch64-darwin
           - os: macos-15
             architecture: packages.aarch64-darwin
+            version: [
+              lldb_wheel.310,
+              lldb_wheel.311,
+              lldb_wheel.312,
+              lldb_wheel.313,
+              lldb_wheel.314,
+            ]
           - os: macos-15
             architecture: packages.x86_64-linux
+            version: [
+              lldb_wheel.310,
+              lldb_wheel.311,
+              lldb_wheel.312,
+              lldb_wheel.313,
+              lldb_wheel.314,
+            ]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 260
     environment:
@@ -147,7 +161,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: build
-      run: nix build '.#${{ matrix.architecture }}.${{ matrix.version }}' -L -o ./result
+      run: nix build '.#${{ matrix.architecture }}.${{ matrix.version }}' -o ./result
 
     - name: dist
       run: |
