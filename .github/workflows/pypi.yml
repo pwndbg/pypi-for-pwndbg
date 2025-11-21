@@ -10,9 +10,7 @@ on:
         type: choice
         options:
         - gdb
-        - gdb_dev
         - lldb
-        - lldb_dev
         - all
       osType:
         description: 'What os?'
@@ -20,9 +18,7 @@ on:
         default: 'all'
         type: choice
         options:
-        - ubuntu-latest
         - ubuntu-24.04-arm
-        - macos-13
         - macos-15
         - all
 
@@ -33,12 +29,24 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          ubuntu-latest,  # x86_64-linux
           ubuntu-24.04-arm,  # aarch64-linux
-
-          macos-13,  # x86_64-darwin
-          macos-15,  # aarch64-darwin
         ]
+        architecture: [
+          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform,
+          packages.aarch64-linux.pkgsCross.aarch64-multiplatform,
+          packages.aarch64-linux.pkgsCross.gnu32,
+          packages.aarch64-linux.pkgsCross.gnu64,
+          packages.aarch64-linux.pkgsCross.riscv64,
+          packages.aarch64-linux.pkgsCross.s390x,
+          packages.aarch64-linux.pkgsCross.powernv,
+          packages.aarch64-linux.pkgsCross.loongarch64-linux,
+        ]
+        include:
+          # aarch64-darwin
+          - os: macos-15
+            architecture: packages.aarch64-darwin
+          - os: macos-15
+            architecture: packages.x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     environment:
@@ -57,19 +65,19 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: build 310
-      run: nix build '.#gdb_wheel.310' -o ./result310
+      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.310' -o ./result310
 
     - name: build 311
-      run: nix build '.#gdb_wheel.311' -o ./result311
+      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.311' -o ./result311
 
     - name: build 312
-      run: nix build '.#gdb_wheel.312' -o ./result312
+      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.312' -o ./result312
 
     - name: build 313
-      run: nix build '.#gdb_wheel.313' -o ./result313
+      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.313' -o ./result313
 
     - name: build 314
-      run: nix build '.#gdb_wheel.314' -o ./result314
+      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.314' -o ./result314
 
     - name: dist
       run: |
@@ -82,76 +90,13 @@ jobs:
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
-        name: ${{ matrix.os }}_gdb
+        name: ${{ matrix.os }}_${{ matrix.attribute }}_gdb
         retention-days: 90
         path: ./dist/*
 
-    - name: Publish package distributions to PyPI
-      run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
-
-  releases-gdb_dev:
-    if: inputs.buildType == 'gdb_dev' || inputs.buildType == 'all'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [
-          ubuntu-latest,  # x86_64-linux
-          ubuntu-24.04-arm,  # aarch64-linux
-
-          macos-13,  # x86_64-darwin
-          macos-15,  # aarch64-darwin
-        ]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 180
-    environment:
-      name: pypi
-      url: https://pypi.org/p/gdb-for-pwndbg
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    - name: skip if
-      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
-      run: exit 1
-
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
-    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: build 310
-      run: nix build '.#gdb_dev_wheel.310' -o ./result310
-
-    - name: build 311
-      run: nix build '.#gdb_dev_wheel.311' -o ./result311
-
-    - name: build 312
-      run: nix build '.#gdb_dev_wheel.312' -o ./result312
-
-    - name: build 313
-      run: nix build '.#gdb_dev_wheel.313' -o ./result313
-
-    - name: build 314
-      run: nix build '.#gdb_dev_wheel.314' -o ./result314
-
-    - name: dist
-      run: |
-        mkdir dist
-        cp ./result310/*.whl ./dist/
-        cp ./result311/*.whl ./dist/
-        cp ./result312/*.whl ./dist/
-        cp ./result313/*.whl ./dist/
-        cp ./result314/*.whl ./dist/
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
-      with:
-        name: ${{ matrix.os }}_gdb_dev
-        retention-days: 90
-        path: ./dist/*
-
-    - name: Publish package distributions to PyPI
-      run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
+#    - name: Publish package distributions to PyPI
+#      run: |
+#        nix run nixpkgs#uv -- tool run twine upload dist/*
 
   releases-lldb:
     if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
@@ -159,19 +104,31 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          ubuntu-latest,  # x86_64-linux
           ubuntu-24.04-arm,  # aarch64-linux
-
-          macos-13,  # x86_64-darwin
-          macos-15,  # aarch64-darwin
         ]
-        attribute: [
-          lldb_wheel.310,
-          lldb_wheel.311,
-          lldb_wheel.312,
-          lldb_wheel.313,
-          lldb_wheel.314,
+        architecture: [
+          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform,
+          packages.aarch64-linux.pkgsCross.aarch64-multiplatform,
+          packages.aarch64-linux.pkgsCross.gnu32,
+          packages.aarch64-linux.pkgsCross.gnu64,
+          packages.aarch64-linux.pkgsCross.riscv64,
+          packages.aarch64-linux.pkgsCross.s390x,
+          packages.aarch64-linux.pkgsCross.powernv,
+          packages.aarch64-linux.pkgsCross.loongarch64-linux,
         ]
+        version: [
+          wheel-lldb-for-pwndbg.310,
+          wheel-lldb-for-pwndbg.311,
+          wheel-lldb-for-pwndbg.312,
+          wheel-lldb-for-pwndbg.313,
+          wheel-lldb-for-pwndbg.314,
+        ]
+        include:
+          # aarch64-darwin
+          - os: macos-15
+            architecture: packages.aarch64-darwin
+          - os: macos-15
+            architecture: packages.x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 260
     environment:
@@ -184,29 +141,13 @@ jobs:
       if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
       run: exit 1
 
-    - name: Free Disk Space (Ubuntu)
-      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
-
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
     - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
     - name: build
-      run: nix build '.#${{ matrix.attribute }}' -L -o ./result
+      run: nix build '.#${{ matrix.architecture }}.${{ matrix.version }}' -L -o ./result
 
     - name: dist
       run: |
@@ -218,77 +159,7 @@ jobs:
         name: ${{ matrix.os }}_${{ matrix.attribute }}
         retention-days: 90
         path: ./dist/*
-
-    - name: Publish package distributions to PyPI
-      run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
-
-  releases-lldb_dev:
-    if: inputs.buildType == 'lldb_dev' || inputs.buildType == 'all'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [
-          ubuntu-latest,  # x86_64-linux
-          ubuntu-24.04-arm,  # aarch64-linux
-
-          macos-13,  # x86_64-darwin
-          macos-15,  # aarch64-darwin
-        ]
-        attribute: [
-          lldb_dev_wheel.310,
-          lldb_dev_wheel.311,
-          lldb_dev_wheel.312,
-          lldb_dev_wheel.313,
-          lldb_dev_wheel.314,
-        ]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 260
-    environment:
-      name: pypi
-      url: https://pypi.org/p/lldb-for-pwndbg
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    - name: skip if
-      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
-      run: exit 1
-
-    - name: Free Disk Space (Ubuntu)
-      if: matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-24.04-arm'
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
-
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
-    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: build
-      run: nix build '.#${{ matrix.attribute }}' -L -o ./result
-
-    - name: dist
-      run: |
-        mkdir dist
-        cp ./result/*.whl ./dist/
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
-      with:
-        name: ${{ matrix.os }}_${{ matrix.attribute }}
-        retention-days: 90
-        path: ./dist/*
-
-    - name: Publish package distributions to PyPI
-      run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
+#
+#    - name: Publish package distributions to PyPI
+#      run: |
+#        nix run nixpkgs#uv -- tool run twine upload dist/*
