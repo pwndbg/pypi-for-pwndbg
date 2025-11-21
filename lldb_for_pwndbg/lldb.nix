@@ -151,7 +151,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     (lib.cmakeBool "LLDB_ENABLE_LIBXML2" true)
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
-    #    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
+    (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
