@@ -32,12 +32,6 @@ jobs:
           packages.aarch64-linux.pkgsCross.powernv.wheel-gdb-for-pwndbg,
           packages.aarch64-linux.pkgsCross.loongarch64-linux.wheel-gdb-for-pwndbg,
         ]
-        include:
-          # aarch64-darwin
-          - os: macos-15
-            architecture: packages.aarch64-darwin.wheel-gdb-for-pwndbg
-          - os: macos-15
-            architecture: packages.x86_64-linux.wheel-gdb-for-pwndbg
     uses: ./.github/workflows/build-linux-gdb.yml
     with:
       os: ${{ matrix.os }}
