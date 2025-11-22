@@ -1,4 +1,4 @@
-name: Releases manual
+name: internal release gdb
 
 on:
   workflow_dispatch:

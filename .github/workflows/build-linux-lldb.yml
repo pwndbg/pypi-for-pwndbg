@@ -1,4 +1,4 @@
-name: Releases manual
+name: internal release lldb
 
 on:
   workflow_dispatch:
