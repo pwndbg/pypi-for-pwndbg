@@ -12,18 +12,9 @@ on:
         - gdb
         - lldb
         - all
-      osType:
-        description: 'What os?'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-        - ubuntu-24.04-arm
-        - macos-15
-        - all
 
 jobs:
-  releases-gdb:
+  releases-gdb-linux:
     if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
@@ -31,74 +22,45 @@ jobs:
         os: [
           ubuntu-24.04-arm,  # aarch64-linux
         ]
-        architecture: [
-          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform,
-          packages.aarch64-linux.pkgsCross.aarch64-multiplatform,
-          packages.aarch64-linux.pkgsCross.gnu32,
-          packages.aarch64-linux.pkgsCross.gnu64,
-          packages.aarch64-linux.pkgsCross.riscv64,
-          packages.aarch64-linux.pkgsCross.s390x,
-          packages.aarch64-linux.pkgsCross.powernv,
-          packages.aarch64-linux.pkgsCross.loongarch64-linux,
+        attribute: [
+          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.aarch64-multiplatform.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.gnu32.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.gnu64.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.riscv64.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.s390x.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.powernv.wheel-gdb-for-pwndbg,
+          packages.aarch64-linux.pkgsCross.loongarch64-linux.wheel-gdb-for-pwndbg,
         ]
         include:
           # aarch64-darwin
           - os: macos-15
-            architecture: packages.aarch64-darwin
+            architecture: packages.aarch64-darwin.wheel-gdb-for-pwndbg
           - os: macos-15
-            architecture: packages.x86_64-linux
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 180
-    environment:
-      name: pypi
-      url: https://pypi.org/p/gdb-for-pwndbg
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    - name: skip if
-      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
-      run: exit 1
+            architecture: packages.x86_64-linux.wheel-gdb-for-pwndbg
+    uses: ./.github/workflows/build-linux-gdb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: ${{ matrix.attribute }}
 
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
-    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
+  releases-gdb-macos:
+    if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          macos-15,  # aarch64-darwin
+        ]
+        attribute: [
+          packages.aarch64-darwin.wheel-gdb-for-pwndbg,
+          packages.x86_64-darwin.wheel-gdb-for-pwndbg,
+        ]
+    uses: ./.github/workflows/build-linux-gdb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: ${{ matrix.attribute }}
 
-    - name: build 310
-      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.310' -o ./result310
-
-    - name: build 311
-      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.311' -o ./result311
-
-    - name: build 312
-      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.312' -o ./result312
-
-    - name: build 313
-      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.313' -o ./result313
-
-    - name: build 314
-      run: nix build '.#${{ matrix.architecture }}.wheel-gdb-for-pwndbg.314' -o ./result314
-
-    - name: dist
-      run: |
-        mkdir dist
-        cp ./result310/*.whl ./dist/
-        cp ./result311/*.whl ./dist/
-        cp ./result312/*.whl ./dist/
-        cp ./result313/*.whl ./dist/
-        cp ./result314/*.whl ./dist/
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
-      with:
-        name: ${{ matrix.os }}_${{ matrix.architecture }}_gdb
-        retention-days: 90
-        path: ./dist/*
-
-#    - name: Publish package distributions to PyPI
-#      run: |
-#        nix run nixpkgs#uv -- tool run twine upload dist/*
-
-  releases-lldb:
+  releases-lldb-linux:
     if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
     strategy:
       fail-fast: false
@@ -123,57 +85,31 @@ jobs:
           wheel-lldb-for-pwndbg.313,
           wheel-lldb-for-pwndbg.314,
         ]
-        include:
-          # aarch64-darwin
-          - os: macos-15
-            architecture: packages.aarch64-darwin
-            version: [
-              lldb_wheel.310,
-              lldb_wheel.311,
-              lldb_wheel.312,
-              lldb_wheel.313,
-              lldb_wheel.314,
-            ]
-          - os: macos-15
-            architecture: packages.x86_64-linux
-            version: [
-              lldb_wheel.310,
-              lldb_wheel.311,
-              lldb_wheel.312,
-              lldb_wheel.313,
-              lldb_wheel.314,
-            ]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 260
-    environment:
-      name: pypi
-      url: https://pypi.org/p/lldb-for-pwndbg
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    - name: skip if
-      if: ${{ !(inputs.osType == matrix.os || inputs.osType == 'all') }}
-      run: exit 1
+    uses: ./.github/workflows/build-linux-lldb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: ${{ matrix.architecture }}.${{ matrix.version }}
 
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
-    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: build
-      run: nix build '.#${{ matrix.architecture }}.${{ matrix.version }}' -o ./result
-
-    - name: dist
-      run: |
-        mkdir dist
-        cp ./result/*.whl ./dist/
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
-      with:
-        name: ${{ matrix.os }}_${{ matrix.architecture }}_${{ matrix.version }}
-        retention-days: 90
-        path: ./dist/*
-#
-#    - name: Publish package distributions to PyPI
-#      run: |
-#        nix run nixpkgs#uv -- tool run twine upload dist/*
+  releases-lldb-macos:
+    if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          macos-15,  # aarch64-darwin
+        ]
+        architecture: [
+          packages.aarch64-darwin,
+          packages.x86_64-darwin,
+        ]
+        version: [
+          wheel-lldb-for-pwndbg.310,
+          wheel-lldb-for-pwndbg.311,
+          wheel-lldb-for-pwndbg.312,
+          wheel-lldb-for-pwndbg.313,
+          wheel-lldb-for-pwndbg.314,
+        ]
+    uses: ./.github/workflows/build-linux-lldb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: ${{ matrix.architecture }}.${{ matrix.version }}

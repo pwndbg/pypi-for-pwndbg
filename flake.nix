@@ -260,17 +260,17 @@
           pkgs = (fun_pkgs system);
         in
         {
-          gdb = pkgs.gdb-for-pwndbg;
-          gdb_wheel = pkgs.wheel-gdb-for-pwndbg;
+          gdb-for-pwndbg = pkgs.gdb-for-pwndbg;
+          wheel-gdb-for-pwndbg = pkgs.wheel-gdb-for-pwndbg;
 
-          gdb_dev = pkgs.gdb_dev-for-pwndbg;
-          gdb_dev_wheel = pkgs.wheel-gdb_dev-for-pwndbg;
+          gdb_dev-for-pwndbg = pkgs.gdb_dev-for-pwndbg;
+          wheel-gdb_dev-for-pwndbg = pkgs.wheel-gdb_dev-for-pwndbg;
 
-          lldb = pkgs.lldb-for-pwndbg;
-          lldb_wheel = pkgs.wheel-lldb-for-pwndbg;
+          lldb-for-pwndbg = pkgs.lldb-for-pwndbg;
+          wheel-lldb-for-pwndbg = pkgs.wheel-lldb-for-pwndbg;
 
-          lldb_dev = pkgs.lldb_dev-for-pwndbg;
-          lldb_dev_wheel = pkgs.wheel_dev-lldb-for-pwndbg;
+          lldb_dev-for-pwndbg = pkgs.lldb_dev-for-pwndbg;
+          wheel_dev-lldb-for-pwndbg = pkgs.wheel_dev-lldb-for-pwndbg;
 
           pkgsCross = pkgs.pkgsCross;
         }

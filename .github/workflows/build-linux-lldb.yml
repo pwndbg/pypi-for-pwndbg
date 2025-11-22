@@ -1,0 +1,48 @@
+name: Releases manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        required: true
+        type: string
+        description: 'What os?'
+      attribute:
+        required: true
+        type: string
+        description: 'What attribute?'
+
+jobs:
+  build-lldb:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 180
+    environment:
+      name: pypi
+      url: https://pypi.org/p/lldb-for-pwndbg
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
+    - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # @v30
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+
+    - name: mk dist
+      run: |
+        mkdir dist
+
+    - name: build
+      run: |
+        nix build '.#${{ inputs.attribute }}' -o ./result
+        cp ./result/*.whl ./dist/
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
+      with:
+        name: ${{ inputs.os }}_${{ inputs.attribute }}_lldb
+        retention-days: 90
+        path: ./dist/*
+
+#    - name: Publish package distributions to PyPI
+#      run: |
+#        nix run nixpkgs#uv -- tool run twine upload dist/*
