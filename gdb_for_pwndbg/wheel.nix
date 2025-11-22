@@ -10,6 +10,7 @@
   bintools,
   libxcrypt,
   darwin,
+  llvm,
 }:
 let
   removeDot = str: builtins.replaceStrings [ "." ] [ "" ] str;
@@ -53,17 +54,16 @@ runCommand "build-wheel"
   {
     nativeBuildInputs = [
       nukeReferences
+      llvm
       python3
       python3Packages.setuptools
       python3Packages.wheel
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      bintools
       patchelf
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       darwin.cctools
-      darwin.binutils
     ];
     env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
   }
@@ -108,11 +108,11 @@ runCommand "build-wheel"
             ./src/gdb_for_pwndbg/_vendor/bin/gdb
     fi
 
-    ${targetPrefix}strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
+    llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
     nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
     if [ "$IS_LINUX" -eq 1 ]; then
-        ${targetPrefix}strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
         nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
     fi
 

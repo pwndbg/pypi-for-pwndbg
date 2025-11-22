@@ -9,6 +9,7 @@
   python3Packages,
   bintools,
   darwin,
+  llvm,
 }:
 let
   targetPrefix = lib.optionalString (
@@ -61,17 +62,16 @@ runCommand "build-wheel"
   {
     nativeBuildInputs = [
       nukeReferences
+      llvm
       python3
       python3Packages.setuptools
       python3Packages.wheel
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [
-      bintools
       patchelf
     ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       darwin.cctools
-      darwin.binutils
     ];
     env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
   }
@@ -140,15 +140,15 @@ runCommand "build-wheel"
             ./src/lldb_for_pwndbg/_vendor/bin/lldb
     fi
 
-    ${targetPrefix}strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
+    llvm-strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
     nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
     if [ "$IS_LINUX" -eq 1 ]; then
-        ${targetPrefix}strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+        llvm-strip ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
     fi
 
-    ${targetPrefix}strip -S ./src/lldb/$lldb_python_so
+    llvm-strip -S ./src/lldb/$lldb_python_so
     nuke-refs ./src/lldb/$lldb_python_so
 
     # this file is unused
