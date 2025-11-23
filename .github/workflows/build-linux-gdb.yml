@@ -63,6 +63,6 @@ jobs:
         retention-days: 90
         path: ./dist/*
 
-#    - name: Publish package distributions to PyPI
-#      run: |
-#        nix run nixpkgs#uv -- tool run twine upload dist/*
+    - name: Publish package distributions to PyPI
+      run: |
+        nix run nixpkgs#uv -- tool run twine upload dist/*
