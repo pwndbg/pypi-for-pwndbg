@@ -228,6 +228,18 @@
             in
             (if prev.stdenv.targetPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
 
+          libcurl-static = prev.pkgsStatic.curl.override {
+            http2Support = true;
+            gssSupport = false;
+            http3Support = false;
+            websocketSupport = false;
+            ldapSupport = false;
+            idnSupport = false;
+            pslSupport = false;
+            rtmpSupport = false;
+            scpSupport = false;
+          };
+
           gdb-for-pwndbg = fun_gdb prev;
           wheel-gdb-for-pwndbg = fun_gdb_wheel final "gdb-for-pwndbg";
 

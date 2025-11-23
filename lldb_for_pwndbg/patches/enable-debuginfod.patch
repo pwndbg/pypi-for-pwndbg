@@ -1,0 +1,12 @@
+diff --git a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp
+--- a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp	(revision 8e2cd28cd4ba46613a46467b0c91b1cabead26cd)
++++ b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp	(date 1763861581310)
+@@ -44,6 +44,9 @@
+
+     // We need to read the default value first to read the environment variable.
+     llvm::SmallVector<llvm::StringRef> urls = llvm::getDefaultDebuginfodUrls();
++    if (urls.empty()) {
++      urls.push_back("https://debuginfod.pwndbg.re");
++    }
+     Args arg_urls{urls};
+     m_collection_sp->SetPropertyAtIndexFromArgs(ePropertyServerURLs, arg_urls);
