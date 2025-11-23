@@ -58,6 +58,46 @@ def check_lib_python():
 
             venv_libpath.symlink_to(py_libpath)
 
+def get_loader():
+    if sys.platform != "linux":
+        return None
+
+    known_loaders = {
+        "x86_64-linux": "ld-linux-x86-64.so.2",
+        "aarch64-linux": "ld-linux-aarch64.so.1",
+        "loongarch64-linux": "ld-linux-loongarch-lp64d.so.1",
+        "s390x-linux": "ld64.so.1",
+        "riscv64-linux": "ld-linux-riscv64-lp64d.so.1",
+        "powerpc64le-linux": "ld64.so.2",
+        "armv7l-linux": "ld-linux-armhf.so.3",
+        "i686-linux": "ld-linux.so.2",
+    }
+    try:
+        with open("/proc/self/maps") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) < 6:
+                    continue
+                _, perms, _, _, _, path = parts[:6]
+                if "r-xp" not in perms:
+                    continue
+                for loader_name in known_loaders.values():
+                    if path.endswith("/"+loader_name):
+                        return path
+    except:
+        pass
+    return None
+
+
+def exec_prog(prog, args, envs):
+    ld_path = get_loader()
+    if ld_path is None:
+        os.execve(prog, args, env=envs)
+    else:
+        args.insert(0, ld_path)
+        args[1] = prog
+        os.execve(ld_path, args, env=envs)
+
 
 def main():
     check_lib_python()
@@ -67,10 +107,9 @@ def main():
     envs['PYTHONPATH'] = ':'.join(sys.path)
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 
-    # todo: ld-path? /proc/self/exe? /proc/self/maps?
     sys.argv.insert(1, str(data_path))
     sys.argv.insert(1, "--data-directory")
-    os.execve(str(gdb_path), sys.argv, env=envs)
+    exec_prog(str(gdb_path), sys.argv, envs)
 
 
 if __name__ == '__main__':
