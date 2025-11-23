@@ -43,11 +43,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [
+          macos-13,  # x86_64-darwin
           macos-15,  # aarch64-darwin
         ]
         attribute: [
-          packages.aarch64-darwin.wheel-gdb-for-pwndbg,
-          packages.x86_64-darwin.wheel-gdb-for-pwndbg,
+          wheel-gdb-for-pwndbg,
         ]
     uses: ./.github/workflows/build-linux-gdb.yml
     with:
@@ -90,11 +90,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [
+          macos-13,  # x86_64-darwin
           macos-15,  # aarch64-darwin
-        ]
-        architecture: [
-          packages.aarch64-darwin,
-          packages.x86_64-darwin,
         ]
         version: [
           wheel-lldb-for-pwndbg.310,
@@ -106,4 +103,4 @@ jobs:
     uses: ./.github/workflows/build-linux-lldb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: ${{ matrix.architecture }}.${{ matrix.version }}
+      attribute: ${{ matrix.version }}
