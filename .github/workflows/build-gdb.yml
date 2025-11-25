@@ -71,6 +71,7 @@ jobs:
         tag_name: ${{ github.ref_name }}
         name: "GDB Release ${{ github.ref_name }}"
         body: "Automatically built packages for ${{ github.ref_name }}"
+        prerelease: ${{ contains(github.ref_name, 'dev') }}
         files: |
           dist/*.whl
 
