@@ -32,7 +32,7 @@ jobs:
           packages.aarch64-linux.pkgsCross.powernv.wheel-gdb-for-pwndbg,
           packages.aarch64-linux.pkgsCross.loongarch64-linux.wheel-gdb-for-pwndbg,
         ]
-    uses: ./.github/workflows/build-linux-gdb.yml
+    uses: ./.github/workflows/build-gdb.yml
     with:
       os: ${{ matrix.os }}
       attribute: ${{ matrix.attribute }}
@@ -49,7 +49,7 @@ jobs:
         attribute: [
           wheel-gdb-for-pwndbg,
         ]
-    uses: ./.github/workflows/build-linux-gdb.yml
+    uses: ./.github/workflows/build-gdb.yml
     with:
       os: ${{ matrix.os }}
       attribute: ${{ matrix.attribute }}
@@ -79,7 +79,7 @@ jobs:
           wheel-lldb-for-pwndbg.313,
           wheel-lldb-for-pwndbg.314,
         ]
-    uses: ./.github/workflows/build-linux-lldb.yml
+    uses: ./.github/workflows/build-lldb.yml
     with:
       os: ${{ matrix.os }}
       attribute: ${{ matrix.architecture }}.${{ matrix.version }}
@@ -100,7 +100,7 @@ jobs:
           wheel-lldb-for-pwndbg.313,
           wheel-lldb-for-pwndbg.314,
         ]
-    uses: ./.github/workflows/build-linux-lldb.yml
+    uses: ./.github/workflows/build-lldb.yml
     with:
       os: ${{ matrix.os }}
       attribute: ${{ matrix.version }}
