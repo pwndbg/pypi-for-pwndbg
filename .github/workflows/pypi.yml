@@ -60,7 +60,7 @@ jobs:
     uses: ./.github/workflows/build-gdb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
+      attribute: ${{ matrix.architecture }}.wheel-${{ needs.determine-build-type.outputs.buildType }}-for-pwndbg
 
   releases-gdb-macos:
     needs: determine-build-type
@@ -75,7 +75,7 @@ jobs:
     uses: ./.github/workflows/build-gdb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: wheel-${{ env.buildType }}-for-pwndbg
+      attribute: wheel-${{ needs.determine-build-type.outputs.buildType }}-for-pwndbg
 
   releases-lldb-linux:
     needs: determine-build-type
@@ -99,7 +99,7 @@ jobs:
     uses: ./.github/workflows/build-lldb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
+      attribute: ${{ matrix.architecture }}.wheel-${{ needs.determine-build-type.outputs.buildType }}-for-pwndbg
 
   releases-lldb-macos:
     needs: determine-build-type
@@ -114,4 +114,4 @@ jobs:
     uses: ./.github/workflows/build-lldb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: wheel-${{ env.buildType }}-for-pwndbg
+      attribute: wheel-${{ needs.determine-build-type.outputs.buildType }}-for-pwndbg
