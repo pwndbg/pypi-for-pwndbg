@@ -49,79 +49,102 @@ let
       "aarch64-darwin" = "macosx_11_0_arm64";
     }
     .${stdenv.targetPlatform.system};
-in
-runCommand "build-wheel"
-  {
-    nativeBuildInputs = [
-      nukeReferences
-      llvm
-      python3
-      python3Packages.setuptools
-      python3Packages.wheel
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isLinux [
-      patchelf
-    ]
-    ++ lib.optionals stdenv.hostPlatform.isDarwin [
-      darwin.cctools
-    ];
-    env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
-  }
-  ''
-    set -ex
-    mkdir build
-    cd build
-    cp ${./setup.py} setup.py
-    substituteInPlace setup.py \
-      --replace-fail '@version@' "${gdb_drv.pypiVersion}"
 
-    cp ${./MANIFEST.in} MANIFEST.in
-    cp -rf ${./src} src
-    chmod -R +w ./src/
+  final =
+    runCommand "build-wheel"
+      {
+        nativeBuildInputs = [
+          nukeReferences
+          llvm
+          python3
+          python3Packages.setuptools
+          python3Packages.wheel
+        ]
+        ++ lib.optionals stdenv.hostPlatform.isLinux [
+          patchelf
+        ]
+        ++ lib.optionals stdenv.hostPlatform.isDarwin [
+          darwin.cctools
+        ];
+        env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
+        env.BUILD_DEBUG_TARBALL = "0";
 
-    PY_VERSION="${removeDot gdb_drv.pythonVersion}"
-    GDB_DIR="${gdb_drv}"
+        passthru = {
+          debug = final.overrideAttrs (old: {
+            env = old.env // {
+              BUILD_DEBUG_TARBALL = "1";
+            };
+          });
+        };
+      }
+      ''
+        set -ex
+        mkdir $out
+        mkdir build
+        WHEEL_OUT_NAME=gdb_for_pwndbg-${gdb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
 
-    mkdir -p ./src/gdb_for_pwndbg/_vendor/bin
-    mkdir -p ./src/gdb_for_pwndbg/_vendor/share
+        cd build
+        cp ${./setup.py} setup.py
+        substituteInPlace setup.py \
+          --replace-fail '@version@' "${gdb_drv.pypiVersion}"
 
-    cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
-    cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
-
-    mkdir -p ./src/gdb_for_pwndbg/_vendor/share/gdb/
-    cp -rf $GDB_DIR/share/gdb/syscalls/ ./src/gdb_for_pwndbg/_vendor/share/gdb/
-    chmod -R +w ./src/
-
-    if [ "$IS_LINUX" -eq 1 ]; then
-        cp $GDB_DIR/bin/gdbserver ./src/gdb_for_pwndbg/_vendor/bin/
+        cp ${./MANIFEST.in} MANIFEST.in
+        cp -rf ${./src} src
         chmod -R +w ./src/
 
-        patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
-        patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        PY_VERSION="${removeDot gdb_drv.pythonVersion}"
+        GDB_DIR="${gdb_drv}"
 
-        patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
-    else
-        install_name_tool \
-            -change \
-            ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
-            '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
-            ./src/gdb_for_pwndbg/_vendor/bin/gdb
-    fi
+        mkdir -p ./src/gdb_for_pwndbg/_vendor/bin
+        mkdir -p ./src/gdb_for_pwndbg/_vendor/share
 
-    llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
-    nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        cp $GDB_DIR/bin/gdb ./src/gdb_for_pwndbg/_vendor/bin/
+        cp -rf $GDB_DIR/share/gdb/python/gdb/ ./src/
 
-    if [ "$IS_LINUX" -eq 1 ]; then
-        llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
-        nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
-    fi
+        mkdir -p ./src/gdb_for_pwndbg/_vendor/share/gdb/
+        cp -rf $GDB_DIR/share/gdb/syscalls/ ./src/gdb_for_pwndbg/_vendor/share/gdb/
+        chmod -R +w ./src/
 
-    python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdb
-    if [ "$IS_LINUX" -eq 1 ]; then
-        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
-    fi
+        if [ "$IS_LINUX" -eq 1 ]; then
+            cp $GDB_DIR/bin/gdbserver ./src/gdb_for_pwndbg/_vendor/bin/
+            chmod -R +w ./src/
 
-    python3 setup.py bdist_wheel
-    mkdir $out
-    mv dist/*.whl $out/gdb_for_pwndbg-${gdb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}.whl
-  ''
+            patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+            patchelf --set-interpreter ${interpreterPath} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+            patchelf --set-rpath '$ORIGIN/../../../../../../lib' ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        else
+            install_name_tool \
+                -change \
+                ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
+                '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
+                ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        fi
+
+        if [ "$BUILD_DEBUG_TARBALL" -eq 1 ]; then
+          tar cvfJ $out/$WHEEL_OUT_NAME.debug.tar.xz \
+            --owner=0 --group=0 --mode=u+rw,uga+r \
+            --mtime='1970-01-01' \
+            -C ./src \
+            --transform="s|^./|./$WHEEL_OUT_NAME/|" \
+            .
+        fi
+
+        llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+        if [ "$IS_LINUX" -eq 1 ]; then
+            llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+            nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        fi
+
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdb
+        if [ "$IS_LINUX" -eq 1 ]; then
+            python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        fi
+
+        python3 setup.py bdist_wheel
+        mv dist/*.whl $out/$WHEEL_OUT_NAME.whl
+      '';
+in
+final

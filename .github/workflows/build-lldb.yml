@@ -45,8 +45,8 @@ jobs:
 
     - name: build
       run: |
-        nix build '.#${{ inputs.attribute }}.${{ matrix.version }}' -o ./result
-        cp ./result/*.whl ./dist/
+        nix build '.#${{ inputs.attribute }}.${{ matrix.version }}.debug' -o ./result
+        cp ./result/* ./dist/
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
@@ -64,6 +64,7 @@ jobs:
         prerelease: ${{ contains(github.ref_name, 'dev') }}
         files: |
           dist/*.whl
+          dist/*.debug.tar.xz
 
     - name: Publish package distributions to PyPI
       if: github.ref_type == 'tag'

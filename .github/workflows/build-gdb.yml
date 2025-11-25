@@ -35,28 +35,28 @@ jobs:
 
     - name: build 310
       run: |
-        nix build '.#${{ inputs.attribute }}.310' -o ./result
+        nix build '.#${{ inputs.attribute }}.310.debug' -o ./result
         cp ./result/*.whl ./dist/
 
     - name: build 311
       run: |
-        nix build '.#${{ inputs.attribute }}.311' -o ./result
+        nix build '.#${{ inputs.attribute }}.311.debug' -o ./result
         cp ./result/*.whl ./dist/
 
     - name: build 312
       run: |
-        nix build '.#${{ inputs.attribute }}.312' -o ./result
+        nix build '.#${{ inputs.attribute }}.312.debug' -o ./result
         cp ./result/*.whl ./dist/
 
     - name: build 313
       run: |
-        nix build '.#${{ inputs.attribute }}.313' -o ./result
+        nix build '.#${{ inputs.attribute }}.313.debug' -o ./result
         cp ./result/*.whl ./dist/
 
     - name: build 314
       run: |
-        nix build '.#${{ inputs.attribute }}.314' -o ./result
-        cp ./result/*.whl ./dist/
+        nix build '.#${{ inputs.attribute }}.314.debug' -o ./result
+        cp ./result/* ./dist/
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
@@ -74,6 +74,7 @@ jobs:
         prerelease: ${{ contains(github.ref_name, 'dev') }}
         files: |
           dist/*.whl
+          dist/*.debug.tar.xz
 
     - name: Publish package distributions to PyPI
       if: github.ref_type == 'tag'

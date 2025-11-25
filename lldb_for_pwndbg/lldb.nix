@@ -110,7 +110,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ncurses-static
     libxml2-static
     libedit-static
-#    libcurl-static
+    #    libcurl-static
     python3
   ];
 
@@ -160,8 +160,8 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
     (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
-#    # curl is needed for debuginfod, https://github.com/llvm/llvm-project/pull/70996
-#    (lib.cmakeBool "LLVM_ENABLE_CURL" true)
+    #    # curl is needed for debuginfod, https://github.com/llvm/llvm-project/pull/70996
+    #    (lib.cmakeBool "LLVM_ENABLE_CURL" true)
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
