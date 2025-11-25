@@ -88,7 +88,6 @@ let
         set -ex
         mkdir $out
         mkdir build
-        WHEEL_OUT_NAME=lldb_for_pwndbg-${lldb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
 
         cd build
         cp ${./setup.py} setup.py
@@ -101,6 +100,7 @@ let
 
         PY_VERSION="${removeDot lldb_drv.pythonVersion}"
         LLDB_DIR="${lldb_drv}"
+        WHEEL_OUT_NAME=lldb_for_pwndbg-${lldb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
 
         mkdir -p ./src/lldb_for_pwndbg/_vendor/bin
         mkdir -p ./src/lldb_for_pwndbg/_vendor/lib

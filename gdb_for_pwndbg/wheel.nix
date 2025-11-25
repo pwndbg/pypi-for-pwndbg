@@ -81,7 +81,6 @@ let
         set -ex
         mkdir $out
         mkdir build
-        WHEEL_OUT_NAME=gdb_for_pwndbg-${gdb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
 
         cd build
         cp ${./setup.py} setup.py
@@ -94,6 +93,7 @@ let
 
         PY_VERSION="${removeDot gdb_drv.pythonVersion}"
         GDB_DIR="${gdb_drv}"
+        WHEEL_OUT_NAME=gdb_for_pwndbg-${gdb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
 
         mkdir -p ./src/gdb_for_pwndbg/_vendor/bin
         mkdir -p ./src/gdb_for_pwndbg/_vendor/share
