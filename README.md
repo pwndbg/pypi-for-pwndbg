@@ -38,7 +38,7 @@ where `post{fix_number}` indicates our patch or fix release.
     *(post1 = first custom fix)*
 - **LLDB**
   - Upstream: `LLDB 21.1.5`
-  - Package: `gdb-for-pwndbg==21.1.5.post1`  
+  - Package: `lldb-for-pwndbg==21.1.5.post1`  
     *(post1 = first custom fix)*
 
 
