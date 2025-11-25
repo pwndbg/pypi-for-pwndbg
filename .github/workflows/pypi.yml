@@ -8,54 +8,28 @@ on:
         required: true
         default: 'all'
         type: choice
-        options:
-        - gdb
-        - lldb
-        - all
+        options: [gdb, gdb_dev, lldb, lldb_dev]
+
+  push:
+    tags:
+      - 'gdb-*'
+      - 'gdb_dev-*'
+      - 'lldb-*'
+      - 'lldb_dev-*'
+
+env:
+  buildType: >-
+    ${{
+      startsWith(github.ref_name, 'gdb_dev-') && 'gdb_dev' ||
+      startsWith(github.ref_name, 'gdb-') && 'gdb' ||
+      startsWith(github.ref_name, 'lldb_dev-') && 'lldb_dev' ||
+      startsWith(github.ref_name, 'lldb-') && 'lldb' ||
+      inputs.buildType
+    }}
 
 jobs:
   releases-gdb-linux:
-    if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [
-          ubuntu-24.04-arm,  # aarch64-linux
-        ]
-        attribute: [
-          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.aarch64-multiplatform.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.gnu32.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.gnu64.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.riscv64.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.s390x.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.powernv.wheel-gdb-for-pwndbg,
-          packages.aarch64-linux.pkgsCross.loongarch64-linux.wheel-gdb-for-pwndbg,
-        ]
-    uses: ./.github/workflows/build-gdb.yml
-    with:
-      os: ${{ matrix.os }}
-      attribute: ${{ matrix.attribute }}
-
-  releases-gdb-macos:
-    if: inputs.buildType == 'gdb' || inputs.buildType == 'all'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [
-          macos-13,  # x86_64-darwin
-          macos-15,  # aarch64-darwin
-        ]
-        attribute: [
-          wheel-gdb-for-pwndbg,
-        ]
-    uses: ./.github/workflows/build-gdb.yml
-    with:
-      os: ${{ matrix.os }}
-      attribute: ${{ matrix.attribute }}
-
-  releases-lldb-linux:
-    if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
+    if: env.buildType == 'gdb' || env.buildType == 'gdb_dev'
     strategy:
       fail-fast: false
       matrix:
@@ -72,20 +46,13 @@ jobs:
           packages.aarch64-linux.pkgsCross.powernv,
           packages.aarch64-linux.pkgsCross.loongarch64-linux,
         ]
-        version: [
-          wheel-lldb-for-pwndbg.310,
-          wheel-lldb-for-pwndbg.311,
-          wheel-lldb-for-pwndbg.312,
-          wheel-lldb-for-pwndbg.313,
-          wheel-lldb-for-pwndbg.314,
-        ]
-    uses: ./.github/workflows/build-lldb.yml
+    uses: ./.github/workflows/build-gdb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: ${{ matrix.architecture }}.${{ matrix.version }}
+      attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
 
-  releases-lldb-macos:
-    if: inputs.buildType == 'lldb' || inputs.buildType == 'all'
+  releases-gdb-macos:
+    if: env.buildType == 'gdb' || env.buildType == 'gdb_dev'
     strategy:
       fail-fast: false
       matrix:
@@ -93,14 +60,44 @@ jobs:
           macos-13,  # x86_64-darwin
           macos-15,  # aarch64-darwin
         ]
-        version: [
-          wheel-lldb-for-pwndbg.310,
-          wheel-lldb-for-pwndbg.311,
-          wheel-lldb-for-pwndbg.312,
-          wheel-lldb-for-pwndbg.313,
-          wheel-lldb-for-pwndbg.314,
+    uses: ./.github/workflows/build-gdb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: wheel-${{ env.buildType }}-for-pwndbg
+
+  releases-lldb-linux:
+    if: env.buildType == 'lldb' || env.buildType == 'lldb_dev'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-24.04-arm,  # aarch64-linux
+        ]
+        architecture: [
+          packages.aarch64-linux.pkgsCross.armv7l-hf-multiplatform,
+          packages.aarch64-linux.pkgsCross.aarch64-multiplatform,
+          packages.aarch64-linux.pkgsCross.gnu32,
+          packages.aarch64-linux.pkgsCross.gnu64,
+          packages.aarch64-linux.pkgsCross.riscv64,
+          packages.aarch64-linux.pkgsCross.s390x,
+          packages.aarch64-linux.pkgsCross.powernv,
+          packages.aarch64-linux.pkgsCross.loongarch64-linux,
         ]
     uses: ./.github/workflows/build-lldb.yml
     with:
       os: ${{ matrix.os }}
-      attribute: ${{ matrix.version }}
+      attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
+
+  releases-lldb-macos:
+    if: env.buildType == 'lldb' || env.buildType == 'lldb_dev'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          macos-13,  # x86_64-darwin
+          macos-15,  # aarch64-darwin
+        ]
+    uses: ./.github/workflows/build-lldb.yml
+    with:
+      os: ${{ matrix.os }}
+      attribute: wheel-${{ env.buildType }}-for-pwndbg
