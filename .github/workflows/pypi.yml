@@ -17,19 +17,30 @@ on:
       - 'lldb-*'
       - 'lldb_dev-*'
 
-env:
-  buildType: >-
-    ${{
-      startsWith(github.ref_name, 'gdb_dev-') && 'gdb_dev' ||
-      startsWith(github.ref_name, 'gdb-') && 'gdb' ||
-      startsWith(github.ref_name, 'lldb_dev-') && 'lldb_dev' ||
-      startsWith(github.ref_name, 'lldb-') && 'lldb' ||
-      inputs.buildType
-    }}
-
 jobs:
+  determine-build-type:
+    runs-on: ubuntu-latest
+    outputs:
+      buildType: ${{ steps.set-build-type.outputs.buildType }}
+    steps:
+      - id: set-build-type
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^gdb_dev- ]]; then
+            echo "buildType=gdb_dev" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF_NAME}" =~ ^gdb- ]]; then
+            echo "buildType=gdb" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF_NAME}" =~ ^lldb_dev- ]]; then
+            echo "buildType=lldb_dev" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF_NAME}" =~ ^lldb- ]]; then
+            echo "buildType=lldb" >> $GITHUB_OUTPUT
+          else
+            echo "buildType=${{ github.event.inputs.buildType }}" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
   releases-gdb-linux:
-    if: env.buildType == 'gdb' || env.buildType == 'gdb_dev'
+    needs: determine-build-type
+    if: ${{ startsWith(needs.determine-build-type.outputs.buildType, 'gdb') }}
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +63,8 @@ jobs:
       attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
 
   releases-gdb-macos:
-    if: env.buildType == 'gdb' || env.buildType == 'gdb_dev'
+    needs: determine-build-type
+    if: ${{ startsWith(needs.determine-build-type.outputs.buildType, 'gdb') }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,7 +78,8 @@ jobs:
       attribute: wheel-${{ env.buildType }}-for-pwndbg
 
   releases-lldb-linux:
-    if: env.buildType == 'lldb' || env.buildType == 'lldb_dev'
+    needs: determine-build-type
+    if: ${{ startsWith(needs.determine-build-type.outputs.buildType, 'lldb') }}
     strategy:
       fail-fast: false
       matrix:
@@ -89,7 +102,8 @@ jobs:
       attribute: ${{ matrix.architecture }}.wheel-${{ env.buildType }}-for-pwndbg
 
   releases-lldb-macos:
-    if: env.buildType == 'lldb' || env.buildType == 'lldb_dev'
+    needs: determine-build-type
+    if: ${{ startsWith(needs.determine-build-type.outputs.buildType, 'lldb') }}
     strategy:
       fail-fast: false
       matrix:
