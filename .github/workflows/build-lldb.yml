@@ -30,7 +30,8 @@ jobs:
       name: pypi
       url: https://pypi.org/p/lldb-for-pwndbg
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing on pypi
+      contents: write  # IMPORTANT: this permission is mandatory for github-release upload
     steps:
 
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
@@ -52,6 +53,16 @@ jobs:
         name: ${{ inputs.os }}_${{ inputs.attribute }}_${{ matrix.version }}_lldb
         retention-days: 90
         path: ./dist/*
+
+    - name: Upload to GitHub Release
+      if: github.ref_type == 'tag'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: "LLDB Release ${{ github.ref_name }}"
+        body: "Automatically built packages for ${{ github.ref_name }}"
+        files: |
+          dist/*.whl
 
     - name: Publish package distributions to PyPI
       if: github.ref_type == 'tag'
