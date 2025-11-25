@@ -36,22 +36,22 @@ jobs:
     - name: build 310
       run: |
         nix build '.#${{ inputs.attribute }}.310.debug' -o ./result
-        cp ./result/*.whl ./dist/
+        cp ./result/* ./dist/
 
     - name: build 311
       run: |
         nix build '.#${{ inputs.attribute }}.311.debug' -o ./result
-        cp ./result/*.whl ./dist/
+        cp ./result/* ./dist/
 
     - name: build 312
       run: |
         nix build '.#${{ inputs.attribute }}.312.debug' -o ./result
-        cp ./result/*.whl ./dist/
+        cp ./result/* ./dist/
 
     - name: build 313
       run: |
         nix build '.#${{ inputs.attribute }}.313.debug' -o ./result
-        cp ./result/*.whl ./dist/
+        cp ./result/* ./dist/
 
     - name: build 314
       run: |
@@ -79,4 +79,4 @@ jobs:
     - name: Publish package distributions to PyPI
       if: github.ref_type == 'tag'
       run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
+        nix run nixpkgs#uv -- tool run twine upload dist/*.whl

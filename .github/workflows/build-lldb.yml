@@ -69,4 +69,4 @@ jobs:
     - name: Publish package distributions to PyPI
       if: github.ref_type == 'tag'
       run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*
+        nix run nixpkgs#uv -- tool run twine upload dist/*.whl
