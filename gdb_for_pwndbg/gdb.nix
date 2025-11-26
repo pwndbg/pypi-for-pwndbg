@@ -93,7 +93,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     xz-static
     libdebuginfod-zig-static
 
-    python3
+#    python3
   ];
 
   passthru = {
@@ -175,7 +175,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     "--disable-sim"
     "--disable-inprocess-agent"
-    "--with-python=${python3.pythonOnBuildForHost.interpreter}"
+#    "--with-python=${python3.pythonOnBuildForHost.interpreter}"
     "--with-debuginfod=yes"
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
