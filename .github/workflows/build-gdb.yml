@@ -15,7 +15,7 @@ on:
 jobs:
   build-gdb:
     runs-on: ${{ inputs.os }}
-    timeout-minutes: 180
+    timeout-minutes: 360
     environment:
       name: pypi
       url: https://pypi.org/p/gdb-for-pwndbg
