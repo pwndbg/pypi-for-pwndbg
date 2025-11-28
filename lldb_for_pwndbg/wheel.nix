@@ -127,6 +127,11 @@ let
 
             patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
             patchelf --remove-rpath ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+
+            # libpython is only needed for `lldb` not _lldb.so itself
+            libpython_name=$(patchelf --print-needed ./src/lldb/$lldb_python_so | grep libpython)
+            patchelf --add-needed $libpython_name --add-rpath '$ORIGIN/../../../../../../lib' ./src/lldb_for_pwndbg/_vendor/bin/lldb
+            patchelf --remove-needed $libpython_name --remove-rpath ./src/lldb/$lldb_python_so
         else
             # Fix lib
             lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
