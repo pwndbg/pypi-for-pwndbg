@@ -86,14 +86,22 @@
           v:
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
-            version = "21.1.6";
-            pypiVersion = "21.1.6.post1";
+            version = "21.1.7";
+            pypiVersion = "21.1.7.post1";
             monorepoSrc = pkgs.fetchFromGitHub {
               owner = "llvm";
               repo = "llvm-project";
-              rev = "llvmorg-21.1.6";
-              hash = "sha256-mqZLJYDEs6FXAjbSOruR2ATZZxemNMagNG9SMjSWBFE=";
+              rev = "llvmorg-21.1.7";
+              hash = "sha256-SaRJ7+iZMhhBdcUDuJpMAY4REQVhrvYMqI2aq3Kz08o=";
             };
+            patches = [
+              (pkgs.fetchpatch {
+                # Fix issue: https://github.com/llvm/llvm-project/issues/170891
+                name = "fix-lldb-crash";
+                url = "https://github.com/llvm/llvm-project/commit/c814ac1928b264a5bdeb98ec9035412fa37fb243.patch";
+                hash = "sha256-6piRR064Qv/gj9oML4G5XCGfvQJ2bHuIFHvvoq8A4Uk=";
+              })
+            ];
           }
         ));
       fun_lldb_dev =

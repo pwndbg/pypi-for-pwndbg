@@ -7,6 +7,7 @@
   version,
   pypiVersion,
   monorepoSrc ? null,
+  patches ? [ ],
 
   cmake,
   ninja,
@@ -69,7 +70,8 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     # todo: upstream changes?
     ./patches/lldb-fix-cross-python.patch
-  ];
+  ]
+  ++ patches;
 
   # See: https://github.com/ziglang/zig-bootstrap/commit/451966c163c7a2e9769d62fd77585af1bc9aca4b
   # See: https://github.com/ziglang/zig/issues/18804#issue-2116892765
