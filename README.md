@@ -33,12 +33,12 @@ where `post{fix_number}` indicates our patch or fix release.
 
 **Examples:**
 - **GDB**
-  - Upstream: `GDB 16.3`
-  - Package: `gdb-for-pwndbg==16.3.0.post1`  
+  - Upstream: `GDB 17.1`
+  - Package: `gdb-for-pwndbg==17.1.0.post1`  
     *(post1 = first custom fix)*
 - **LLDB**
-  - Upstream: `LLDB 21.1.6`
-  - Package: `lldb-for-pwndbg==21.1.6.post1`  
+  - Upstream: `LLDB 21.1.7`
+  - Package: `lldb-for-pwndbg==21.1.7.post1`  
     *(post1 = first custom fix)*
 
 
