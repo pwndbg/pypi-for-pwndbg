@@ -85,7 +85,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     # Needed when installing from git sources
     bison
     flex
-    gettext
     perl
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
