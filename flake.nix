@@ -61,12 +61,12 @@
           v:
           pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
             python3 = pkgs."python${v}";
-            version = "17.0";
-            pypiVersion = "17.0.0.dev251019";
+            version = "18.0";
+            pypiVersion = "18.0.0.dev251227";
             src = pkgs.fetchgit {
               url = "git://sourceware.org/git/binutils-gdb.git";
-              rev = "ba759554ff2d71c8cdd43df645abd04545c32f82"; # refs/heads/gdb-17-branch
-              hash = "sha256-4Hg2ltF62mzabSamPp5fR+SDbGcUqzb87DUgWuoVURs=";
+              rev = "de90570a8bacac3c75f70b45b94b643eecbe22f4"; # refs/heads/gdb-18-branch
+              hash = "sha256-+PIOdY4Sk1pofWe0dL4bvZFcZeeqU2b1nQMHe02+GLQ=";
             };
           }
         ));
