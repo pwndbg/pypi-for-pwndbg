@@ -12,6 +12,10 @@
   fetchurl,
   pkg-config,
   texinfo,
+  perl,
+  bison,
+  flex,
+  gettext,
   buildPackages,
 
   # buildInputs:
@@ -76,6 +80,12 @@ stdenvOver.mkDerivation (finalAttrs: {
     pkg-config
     texinfo
     bintools
+
+    # Needed when installing from git sources
+    bison
+    flex
+    gettext
+    perl
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
   ];
@@ -153,6 +163,14 @@ stdenvOver.mkDerivation (finalAttrs: {
   configureFlags = [
     "--program-prefix="
     "--disable-werror"
+
+    # Disable binutils
+    "--disable-binutils"
+    "--disable-ld"
+    "--disable-gas"
+    "--disable-gprofng"
+    "--disable-gprof"
+    "--disable-nls"
 
     "--enable-targets=all"
     "--enable-64-bit-bfd"
