@@ -48,7 +48,7 @@
           pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
             python3 = pkgs."python${v}";
             version = "17.1";
-            pypiVersion = "17.1.0.post1";
+            pypiVersion = "17.1.0.post2";
             src = pkgs.fetchurl {
               url = "mirror://gnu/gdb/gdb-17.1.tar.xz";
               hash = "sha256-FJlvX3TJ9o9aVD/cRbyngAIH+R+SrupsLnkYIsfG2HY=";
