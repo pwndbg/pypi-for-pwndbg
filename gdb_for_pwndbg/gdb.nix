@@ -59,6 +59,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/enable-silent.patch
     ./patches/darwin-target-match.patch
     ./patches/enable-debuginfod.patch
+    ./patches/fix-gdb-colors.patch
   ];
 
   postPatch = lib.optionalString stdenv.targetPlatform.isDarwin ''

@@ -1,0 +1,38 @@
+Index: gdb/utils.c
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gdb/utils.c b/gdb/utils.c
+--- a/gdb/utils.c	(revision 631a49c452a4a456dd9889d172541ea789f8bcae)
++++ b/gdb/utils.c	(date 1766816718231)
+@@ -1675,6 +1675,7 @@
+      when this is necessary; prompt user for new page when this is
+      necessary.  */
+
++  ui_file_style current_style = m_applied_style;
+   while (*linebuffer != '\0')
+     {
+       /* Possible new page.  Note that PAGINATION_DISABLED_FOR_COMMAND
+@@ -1706,11 +1707,10 @@
+ 		 don't increment chars_printed here.  */
+
+ 	      size_t style_len;
+-	      ui_file_style style;
+-	      if (style.parse (linebuffer, &style_len)
++	      if (current_style.parse (linebuffer, &style_len)
+ 		  && style_len <= skip_bytes)
+ 		{
+-		  this->emit_style_escape (style);
++		  this->emit_style_escape (current_style);
+
+ 		  linebuffer += style_len;
+ 		  skip_bytes -= style_len;
+@@ -1817,6 +1817,7 @@
+ 	}
+     }
+
++  m_applied_style = current_style;
+   buffer_clearer.release ();
+ }
+
