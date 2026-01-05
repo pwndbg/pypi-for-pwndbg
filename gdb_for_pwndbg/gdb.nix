@@ -59,18 +59,12 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/enable-silent.patch
     ./patches/darwin-target-match.patch
     ./patches/enable-debuginfod.patch
-    ./patches/fix-gdb-colors.patch
+    ./patches/fix-gdb-colors.patch  # fix bug: https://sourceware.org/bugzilla/show_bug.cgi?id=33748
   ];
 
   postPatch = lib.optionalString stdenv.targetPlatform.isDarwin ''
     substituteInPlace gdb/darwin-nat.c \
       --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
-
-    #substituteInPlace libiberty/filedescriptor.c \
-    #  --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
-    #substituteInPlace libiberty/fibheap.c \
-    #  --replace-fail '#include "bfd/mach-o.h"' '#include "mach-o.h"'
-    # HAVE_LIMITS_H
   '';
 
   strictDeps = true;
