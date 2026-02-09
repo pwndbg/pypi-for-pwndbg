@@ -110,13 +110,13 @@
           v:
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
-            version = "22.0.0git";
-            pypiVersion = "22.0.0.dev251019";
+            version = "23.0.0git";
+            pypiVersion = "23.0.0.dev260209";
             monorepoSrc = pkgs.fetchFromGitHub {
               owner = "llvm";
               repo = "llvm-project";
-              rev = "63ca2fd7a16f532a95e53780220d2eae0debb8d9"; # refs/heads/main
-              hash = "sha256-tOczPkDDir9XMIVZ3udpBWUDuoAhHuosw79gFjH2oRU=";
+              rev = "fed9abcb4796507622bdd9e2e36bc80260a5197b"; # refs/heads/main
+              hash = "sha256-xkfHSmcQIkobNu1khy6SGMYsgYvAg4bhDMgYAKQUKQ8=";
             };
           }
         ));
@@ -290,7 +290,7 @@
           wheel-lldb-for-pwndbg = pkgs.wheel-lldb-for-pwndbg;
 
           lldb_dev-for-pwndbg = pkgs.lldb_dev-for-pwndbg;
-          wheel_dev-lldb-for-pwndbg = pkgs.wheel_dev-lldb-for-pwndbg;
+          wheel-lldb_dev-for-pwndbg = pkgs.wheel-lldb_dev-for-pwndbg;
 
           pkgsCross = pkgs.pkgsCross;
         }
