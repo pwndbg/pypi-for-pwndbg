@@ -58,6 +58,11 @@ jobs:
         nix build '.#${{ inputs.attribute }}.314.debug' -o ./result
         cp ./result/* ./dist/
 
+    - name: build 315
+      run: |
+        nix build '.#${{ inputs.attribute }}.315.debug' -o ./result
+        cp ./result/* ./dist/
+
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
       with:
         name: ${{ inputs.os }}_${{ inputs.attribute }}_gdb

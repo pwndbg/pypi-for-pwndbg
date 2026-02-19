@@ -11,7 +11,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     debuginfod-zig.url = "github:pwndbg/debuginfod-zig";
   };
 
@@ -31,6 +31,7 @@
         "312"
         "313"
         "314"
+        "315"
       ];
 
       fun_gdb_wheel =
