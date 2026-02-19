@@ -95,6 +95,14 @@ libpython_dependencies = {
             "@executable_path/../../../../../../lib/libpython3.14.dylib",
         ],
     },
+    "3.15": {
+        "linux": [
+            "libpython3.15.so.1.0",
+        ],
+        "darwin": [
+            "@executable_path/../../../../../../lib/libpython3.15.dylib",
+        ],
+    },
 }[python_version][system.split("-")[1]]
 
 allowlist_dependencies = {

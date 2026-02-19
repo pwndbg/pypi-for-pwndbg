@@ -145,6 +145,24 @@ libpython_dependencies = {
             "@loader_path/../../../../lib/libpython3.14.dylib",
         ],
     },
+    "3.15": {
+        "linux": [
+            "_lldb.cpython-315-x86_64-linux-gnu.so",
+            "_lldb.cpython-315-aarch64-linux-gnu.so",
+            "_lldb.cpython-315-loongarch64-linux-gnu.so",
+            "_lldb.cpython-315-arm-linux-gnueabihf.so",
+            "_lldb.cpython-315-powerpc64le-linux-gnu.so",
+            "_lldb.cpython-315-s390x-linux-gnu.so",
+            "_lldb.cpython-315-i386-linux-gnu.so",
+            "_lldb.cpython-315-riscv64-linux-gnu.so",
+            "libpython3.15.so.1.0",
+        ],
+        "darwin": [
+            "_lldb.cpython-315-darwin.so",
+            "@executable_path/../../../lldb/_lldb.cpython-315-darwin.so",
+            "@loader_path/../../../../lib/libpython3.15.dylib",
+        ],
+    },
 }[python_version][system.split("-")[1]]
 
 allowlist_dependencies = {
