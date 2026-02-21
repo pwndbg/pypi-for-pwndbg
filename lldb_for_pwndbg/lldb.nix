@@ -171,7 +171,6 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     # curl is needed for debuginfod, https://github.com/llvm/llvm-project/pull/70996
     # FORCE_ON makes cmake error out if curl is not found (vs silently disabling it).
-    # HAVE_CURL=1 bypasses check_symbol_exists which fails in cross-compilation.
     (lib.cmakeFeature "LLVM_ENABLE_CURL" "FORCE_ON")
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")

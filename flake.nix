@@ -246,23 +246,25 @@
           #   Building with glibc stdenv makes OpenSSL use glibc pthreads correctly.
           openssl-static =
             let
-              pkgLinux = (prev.openssl.override {
-                stdenv = final.buildPackages.zig_glibc_2_28.stdenv // {
-                  targetPlatform = prev.stdenv.targetPlatform;
-                  hostPlatform = prev.stdenv.targetPlatform;
-                  buildPlatform = prev.stdenv.buildPlatform;
-                };
-                static = true;
-              }).overrideAttrs (old: {
-                hardeningDisable = [ "zerocallusedregs" ];
-                propagatedBuildInputs = [ ];
-                buildInputs = [ ];
-                doCheck = false;
-                configureFlags = (old.configureFlags or [ ]) ++ [
-                  "no-engine"
-                  "no-dso"
-                ];
-              });
+              pkgLinux =
+                (prev.openssl.override {
+                  stdenv = final.buildPackages.zig_glibc_2_28.stdenv // {
+                    targetPlatform = prev.stdenv.targetPlatform;
+                    hostPlatform = prev.stdenv.targetPlatform;
+                    buildPlatform = prev.stdenv.buildPlatform;
+                  };
+                  static = true;
+                }).overrideAttrs
+                  (old: {
+                    hardeningDisable = [ "zerocallusedregs" ];
+                    propagatedBuildInputs = [ ];
+                    buildInputs = [ ];
+                    doCheck = false;
+                    configureFlags = (old.configureFlags or [ ]) ++ [
+                      "no-engine"
+                      "no-dso"
+                    ];
+                  });
               pkgDarwin = prev.pkgsStatic.openssl.overrideAttrs (old: {
                 configureFlags = (old.configureFlags or [ ]) ++ [
                   "no-engine"
@@ -291,36 +293,54 @@
                 scpSupport = false;
               };
 
-              pkgLinux = (prev.curl.override ({
-                stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
-                openssl = final.openssl-static;
-                nghttp2 = final.nghttp2-static;
-                zlib = final.zlib-static;
-                zstd = final.zstd-static;
-              } // args)).overrideAttrs (old: {
-                hardeningDisable = [ "zerocallusedregs" ];
-                doCheck = false;
-                propagatedBuildInputs = [
-                  final.nghttp2-static
-                  final.openssl-static
-                  final.zlib-static
-                  final.zstd-static
-                ];
-                buildInputs = [ ];
-                configureFlags = (old.configureFlags or [ ]) ++ [
-                  "--disable-shared"
-                  "--enable-static"
-                  "--target=${prev.stdenv.targetPlatform.config}"
-                  "--host=${prev.stdenv.targetPlatform.config}"
-                  "--build=${prev.stdenv.buildPlatform.config}"
-                ];
-              });
-              pkgDarwin = (prev.pkgsStatic.curl.override args).overrideAttrs (old: {
-#                  postFixup = prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
-# substituteInPlace $dev/lib/pkgconfig/libcurl.pc \
-#      --replace-fail "Libs.private: " 'Libs.private: -isysroot ${final.apple-sdk} ' \
-#                  '';
-              });
+              pkgLinux =
+                (prev.curl.override (
+                  {
+                    stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
+                    openssl = final.openssl-static;
+                    nghttp2 = final.nghttp2-static;
+                    zlib = final.zlib-static;
+                    zstd = final.zstd-static;
+                  }
+                  // args
+                )).overrideAttrs
+                  (old: {
+                    hardeningDisable = [ "zerocallusedregs" ];
+                    doCheck = false;
+                    propagatedBuildInputs = [
+                      final.nghttp2-static
+                      final.openssl-static
+                      final.zlib-static
+                      final.zstd-static
+                    ];
+                    buildInputs = [ ];
+                    configureFlags = (old.configureFlags or [ ]) ++ [
+                      "--disable-shared"
+                      "--enable-static"
+                      "--target=${prev.stdenv.targetPlatform.config}"
+                      "--host=${prev.stdenv.targetPlatform.config}"
+                      "--build=${prev.stdenv.buildPlatform.config}"
+                    ];
+                  });
+              pkgDarwin =
+                (prev.curl.override (
+                  {
+                    openssl = final.openssl-static;
+                    nghttp2 = final.nghttp2-static;
+                    zlib = final.zlib-static;
+                    zstd = final.zstd-static;
+                  }
+                  // args
+                )).overrideAttrs
+                  (old: {
+                    propagatedBuildInputs = [
+                      final.nghttp2-static
+                      final.openssl-static
+                      final.zlib-static
+                      final.zstd-static
+                    ];
+                    buildInputs = [ ];
+                  });
             in
             if prev.stdenv.targetPlatform.isLinux then pkgLinux else pkgDarwin;
 
