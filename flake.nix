@@ -134,6 +134,7 @@
           mpfr-static = prev.pkgsStatic.mpfr;
           libipt-static = prev.pkgsStatic.libipt;
           sourceHighlight-static = prev.pkgsStatic.sourceHighlight;
+          nghttp2-static = prev.pkgsStatic.nghttp2;
 
           # Dynamic libiconv causes issues with our portable build.
           # It reads /some-path/lib/gconv/gconv-modules.d/gconv-modules-extra.conf,
@@ -237,17 +238,91 @@
             in
             (if prev.stdenv.targetPlatform.isLinux then pkg else prev.pkgsStatic.libedit);
 
-          libcurl-static = prev.pkgsStatic.curl.override {
-            http2Support = true;
-            gssSupport = false;
-            http3Support = false;
-            websocketSupport = false;
-            ldapSupport = false;
-            idnSupport = false;
-            pslSupport = false;
-            rtmpSupport = false;
-            scpSupport = false;
-          };
+          # OpenSSL without DSO/engine support for static linking into liblldb.so.
+          # - no-engine/no-dso: avoid dlopen dependency (-Wl,-z,defs issue)
+          # - Linux: use zig glibc 2.28 stdenv (same as ncurses-static, libxml2-static etc.)
+          #   pkgsStatic compiles for musl; musl's pthread_cond_t is 40B on aarch64 vs
+          #   glibc's 48B, causing heap corruption when called from glibc worker threads.
+          #   Building with glibc stdenv makes OpenSSL use glibc pthreads correctly.
+          openssl-static =
+            let
+              pkgLinux = (prev.openssl.override {
+                stdenv = final.buildPackages.zig_glibc_2_28.stdenv // {
+                  targetPlatform = prev.stdenv.targetPlatform;
+                  hostPlatform = prev.stdenv.targetPlatform;
+                  buildPlatform = prev.stdenv.buildPlatform;
+                };
+                static = true;
+              }).overrideAttrs (old: {
+                hardeningDisable = [ "zerocallusedregs" ];
+                propagatedBuildInputs = [ ];
+                buildInputs = [ ];
+                doCheck = false;
+                configureFlags = (old.configureFlags or [ ]) ++ [
+                  "no-engine"
+                  "no-dso"
+                ];
+              });
+              pkgDarwin = prev.pkgsStatic.openssl.overrideAttrs (old: {
+                configureFlags = (old.configureFlags or [ ]) ++ [
+                  "no-engine"
+                  "no-dso"
+                ];
+              });
+            in
+            if prev.stdenv.targetPlatform.isLinux then pkgLinux else pkgDarwin;
+
+          libcurl-static =
+            let
+              args = {
+                zlibSupport = true;
+                zstdSupport = true;
+                opensslSupport = true;
+                http2Support = true;
+
+                brotliSupport = false;
+                gssSupport = false;
+                http3Support = false;
+                websocketSupport = false;
+                ldapSupport = false;
+                idnSupport = false;
+                pslSupport = false;
+                rtmpSupport = false;
+                scpSupport = false;
+              };
+
+              pkgLinux = (prev.curl.override ({
+                stdenv = final.buildPackages.zig_glibc_2_28.stdenv;
+                openssl = final.openssl-static;
+                nghttp2 = final.nghttp2-static;
+                zlib = final.zlib-static;
+                zstd = final.zstd-static;
+              } // args)).overrideAttrs (old: {
+                hardeningDisable = [ "zerocallusedregs" ];
+                doCheck = false;
+                propagatedBuildInputs = [
+                  final.nghttp2-static
+                  final.openssl-static
+                  final.zlib-static
+                  final.zstd-static
+                ];
+                buildInputs = [ ];
+                configureFlags = (old.configureFlags or [ ]) ++ [
+                  "--disable-shared"
+                  "--enable-static"
+                  "--target=${prev.stdenv.targetPlatform.config}"
+                  "--host=${prev.stdenv.targetPlatform.config}"
+                  "--build=${prev.stdenv.buildPlatform.config}"
+                ];
+              });
+              pkgDarwin = (prev.pkgsStatic.curl.override args).overrideAttrs (old: {
+#                  postFixup = prev.lib.optionalString prev.stdenv.hostPlatform.isDarwin ''
+# substituteInPlace $dev/lib/pkgconfig/libcurl.pc \
+#      --replace-fail "Libs.private: " 'Libs.private: -isysroot ${final.apple-sdk} ' \
+#                  '';
+              });
+            in
+            if prev.stdenv.targetPlatform.isLinux then pkgLinux else pkgDarwin;
 
           gdb-for-pwndbg = fun_gdb prev;
           wheel-gdb-for-pwndbg = fun_gdb_wheel final "gdb-for-pwndbg";
@@ -294,6 +369,7 @@
           wheel-lldb_dev-for-pwndbg = pkgs.wheel-lldb_dev-for-pwndbg;
 
           pkgsCross = pkgs.pkgsCross;
+          libcurl-static = pkgs.libcurl-static;
         }
       );
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);

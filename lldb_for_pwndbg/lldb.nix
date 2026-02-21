@@ -27,6 +27,7 @@
 
   libcxx,
   python3,
+  pkg-config,
 }:
 let
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
@@ -68,6 +69,9 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
 
+    # Use pkg-config for curl to get transitive deps (openssl, nghttp2, etc.)
+    ./patches/debuginfod-pkgconfig-curl.patch
+
     # todo: upstream changes?
     ./patches/lldb-fix-cross-python.patch
   ]
@@ -88,6 +92,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     which
     swig
     ninja
+    pkg-config
   ];
 
   # since py3.14 probably this is required for cross compilation
@@ -112,7 +117,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ncurses-static
     libxml2-static
     libedit-static
-    #    libcurl-static
+    libcurl-static
     python3
   ];
 
@@ -164,8 +169,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_CURSES" true)
     (lib.cmakeBool "LLDB_ENABLE_LIBEDIT" true)
 
-    #    # curl is needed for debuginfod, https://github.com/llvm/llvm-project/pull/70996
-    #    (lib.cmakeBool "LLVM_ENABLE_CURL" true)
+    # curl is needed for debuginfod, https://github.com/llvm/llvm-project/pull/70996
+    # FORCE_ON makes cmake error out if curl is not found (vs silently disabling it).
+    # HAVE_CURL=1 bypasses check_symbol_exists which fails in cross-compilation.
+    (lib.cmakeFeature "LLVM_ENABLE_CURL" "FORCE_ON")
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")

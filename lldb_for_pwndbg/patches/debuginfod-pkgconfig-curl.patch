@@ -1,0 +1,21 @@
+diff --git a/llvm/lib/Debuginfod/CMakeLists.txt b/llvm/lib/Debuginfod/CMakeLists.txt
+--- a/llvm/lib/Debuginfod/CMakeLists.txt
++++ b/llvm/lib/Debuginfod/CMakeLists.txt
+@@ -1,6 +1,16 @@
+ # Link LibCURL if the user wants it
+ if (LLVM_ENABLE_CURL)
+-  set(imported_libs CURL::libcurl)
++  # Use pkg-config for static curl to get all transitive deps (openssl, nghttp2, etc.)
++  # cmake's FindCURL module creates CURL::libcurl without transitive deps.
++  find_package(PkgConfig QUIET)
++  if(PKG_CONFIG_FOUND)
++    pkg_check_modules(PC_CURL QUIET IMPORTED_TARGET libcurl)
++  endif()
++  if(PC_CURL_FOUND)
++    set(imported_libs PkgConfig::PC_CURL)
++  else()
++    set(imported_libs CURL::libcurl)
++  endif()
+ endif()
+
+ # Link cpp-httplib if the user wants it
