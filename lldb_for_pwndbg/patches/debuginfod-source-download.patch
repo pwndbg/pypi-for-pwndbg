@@ -102,7 +102,7 @@
  #include "lldb/Core/Module.h"
  #include "lldb/Core/ModuleList.h"
  #include "lldb/Host/FileSystem.h"
-@@ -540,6 +541,31 @@
+@@ -540,6 +541,35 @@
            if (remapped)
              SetSupportFile(std::make_shared<SupportFile>(
                  *remapped, support_file_sp->GetChecksum()));
@@ -129,6 +129,10 @@
 +            if (result.has_value()) {
 +              SetSupportFile(std::make_shared<SupportFile>(
 +                  *result, support_file_sp->GetChecksum()));
++              // Map original DWARF path → cache path so that
++              // GetLineEntry().GetFileSpec() resolves to an existing file.
++              target_sp->GetSourcePathMap().AppendUnique(
++                  file_spec.GetPath(), result->GetPath(), /*notify=*/true);
 +            }
 +          }
          }
