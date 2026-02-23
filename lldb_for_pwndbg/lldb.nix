@@ -67,6 +67,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     # temporary fix for: https://github.com/llvm/llvm-project/issues/155692
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
+    ./patches/debuginfod-user-agent.patch
 
     # Use pkg-config for curl to get transitive deps (openssl, nghttp2, etc.)
     ./patches/debuginfod-pkgconfig-curl.patch
