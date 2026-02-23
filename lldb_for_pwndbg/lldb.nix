@@ -23,7 +23,6 @@
   libxml2-static,
   libclang_rt_ppc_builtins,
   libcurl-static,
-  curl,
 
   libcxx,
   python3,

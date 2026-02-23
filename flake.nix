@@ -322,6 +322,11 @@
                       "--build=${prev.stdenv.buildPlatform.config}"
                     ];
                   });
+
+              # NOTE: On macOS, using fully static libcurl with LLDB fails for unknown reasons.
+              # LLDB crashes or fails to link — possibly missing Apple SDK frameworks
+              # (e.g. Security, CoreFoundation) that aren't pulled in transitively,
+              # or libcurl.pc missing required flags. Using dynamic curl with static deps for now.
               pkgDarwin =
                 (prev.curl.override (
                   {
