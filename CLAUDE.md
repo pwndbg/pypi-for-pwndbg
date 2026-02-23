@@ -34,6 +34,12 @@ nix build '.#wheel-gdb-for-pwndbg.312.debug'
 # Build LLDB wheel for Python 3.13
 nix build '.#wheel-lldb-for-pwndbg.313'
 
+# Build a GDB for Python 3.12
+nix build '.#gdb-for-pwndbg.312'
+
+# Build a LLDB for Python 3.12
+nix build '.#lldb-for-pwndbg.312'
+
 # Format Nix files
 nix fmt
 ```

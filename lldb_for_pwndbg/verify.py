@@ -230,6 +230,7 @@ allowlist_dependencies = {
         "/System/Library/Frameworks/Security.framework/Versions/A/Security",
         "/usr/lib/libSystem.B.dylib",
         "/usr/lib/libobjc.A.dylib",
+        "@loader_path/libcurl.4.dylib",
     ],
     "aarch64-darwin": [
         "/usr/lib/libcompression.dylib",
@@ -239,6 +240,7 @@ allowlist_dependencies = {
         "/System/Library/Frameworks/Security.framework/Versions/A/Security",
         "/usr/lib/libSystem.B.dylib",
         "/usr/lib/libobjc.A.dylib",
+        "@loader_path/libcurl.4.dylib",
     ],
 }[system]
 

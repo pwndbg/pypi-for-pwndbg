@@ -28,3 +28,7 @@ py_libpath = os.path.join(sys.base_exec_prefix, 'lib')
 venv_libpath = os.path.join(sys.exec_prefix, 'lib')
 
 ```
+
+todo:
+- debuginfod w llvm nie dodaje user-agenta :(
+- lldb brakuje source kodu: https://github.com/llvm/llvm-project/pull/141773/changes

@@ -1,0 +1,96 @@
+diff --git a/llvm/lib/Debuginfod/HTTPClient.cpp b/llvm/lib/Debuginfod/HTTPClient.cpp
+--- a/llvm/lib/Debuginfod/HTTPClient.cpp
++++ b/llvm/lib/Debuginfod/HTTPClient.cpp
+@@ -20,6 +20,9 @@
+ #include "llvm/Support/MemoryBuffer.h"
+ #ifdef LLVM_ENABLE_CURL
+ #include <curl/curl.h>
++#include "llvm/ADT/SmallVector.h"
++#include "llvm/Config/llvm-config.h"
++#include <sys/utsname.h>
+ #endif
+
+ using namespace llvm;
+@@ -88,6 +91,72 @@
+   return Size;
+ }
+
++static std::string buildUserAgent() {
++  std::string UA = "debuginfod-llvm/" LLVM_VERSION_STRING;
++  struct utsname UTS;
++  if (uname(&UTS) == 0) {
++    UA += ',';
++    UA += UTS.sysname;
++    UA += '/';
++    UA += UTS.machine;
++  }
++#ifdef __linux__
++  auto BufOrErr = MemoryBuffer::getFile("/etc/os-release");
++  if (BufOrErr) {
++    SmallVector<StringRef, 32> Lines;
++    (*BufOrErr)->getBuffer().split(Lines, '\n');
++    StringRef ID, VersionID;
++    for (StringRef Line : Lines) {
++      Line = Line.trim();
++      if (Line.consume_front("ID="))
++        ID = Line.trim('"');
++      else if (Line.consume_front("VERSION_ID="))
++        VersionID = Line.trim('"');
++    }
++    if (!ID.empty()) {
++      UA += ',';
++      UA += ID.str();
++      if (!VersionID.empty()) {
++        UA += '/';
++        UA += VersionID.str();
++      }
++    }
++  }
++#endif
++#ifdef __APPLE__
++  auto BufOrErr = MemoryBuffer::getFile(
++      "/System/Library/CoreServices/SystemVersion.plist");
++  if (BufOrErr) {
++    StringRef Content = (*BufOrErr)->getBuffer();
++    auto extractPlistValue = [&](StringRef Key) -> StringRef {
++      std::string KeyTag = ("<key>" + Key + "</key>").str();
++      size_t KeyPos = Content.find(KeyTag);
++      if (KeyPos == StringRef::npos)
++        return {};
++      size_t Start = Content.find("<string>", KeyPos);
++      if (Start == StringRef::npos)
++        return {};
++      Start += 8; // strlen("<string>")
++      size_t End = Content.find("</string>", Start);
++      if (End == StringRef::npos)
++        return {};
++      return Content.slice(Start, End);
++    };
++    StringRef Name = extractPlistValue("ProductName");
++    StringRef Version = extractPlistValue("ProductVersion");
++    if (!Name.empty()) {
++      UA += ',';
++      UA += Name.str();
++      if (!Version.empty()) {
++        UA += '/';
++        UA += Version.str();
++      }
++    }
++  }
++#endif
++  return UA;
++}
++
+ HTTPClient::HTTPClient() {
+   assert(IsInitialized &&
+          "Must call HTTPClient::initialize() at the beginning of main().");
+@@ -99,6 +168,9 @@
+   curl_easy_setopt(Curl, CURLOPT_WRITEFUNCTION, curlWriteFunction);
+   // Detect supported compressed encodings and accept all.
+   curl_easy_setopt(Curl, CURLOPT_ACCEPT_ENCODING, "");
++  // Identify ourselves to debuginfod servers (e.g. "debuginfod-llvm/21.1.7,Linux/x86_64,ubuntu/22.04").
++  static const std::string UserAgent = buildUserAgent();
++  curl_easy_setopt(Curl, CURLOPT_USERAGENT, UserAgent.c_str());
+ }
+
+ HTTPClient::~HTTPClient() { curl_easy_cleanup(Curl); }

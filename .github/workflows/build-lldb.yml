@@ -25,7 +25,7 @@ jobs:
           312,
           313,
           314,
-          315,
+          # 315,
         ]
     environment:
       name: pypi

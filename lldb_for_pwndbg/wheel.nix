@@ -155,6 +155,20 @@ let
                 '@rpath/liblldb.${lldb_drv.version}.dylib' \
                 "@executable_path/../../../lldb/$lldb_python_so" \
                 ./src/lldb_for_pwndbg/_vendor/bin/lldb
+
+            # extra patch libcurl.4.dylib
+            org_libcurl_path=$(otool -L ./src/lldb/$lldb_python_so | grep libcurl.4.dylib | awk '{print $1}')
+            cp $org_libcurl_path ./src/lldb/libcurl.4.dylib
+
+            install_name_tool \
+                -id "libcurl.4.dylib" \
+                ./src/lldb/libcurl.4.dylib
+
+            install_name_tool \
+                -change \
+                $org_libcurl_path \
+                "@loader_path/libcurl.4.dylib" \
+                ./src/lldb/$lldb_python_so
         fi
 
         # this file is unused
