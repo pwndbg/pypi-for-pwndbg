@@ -68,6 +68,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
     ./patches/debuginfod-user-agent.patch
+    ./patches/debuginfod-source-download.patch
 
     # Use pkg-config for curl to get transitive deps (openssl, nghttp2, etc.)
     ./patches/debuginfod-pkgconfig-curl.patch

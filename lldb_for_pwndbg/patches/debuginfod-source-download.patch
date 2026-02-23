@@ -1,0 +1,187 @@
+--- a/lldb/include/lldb/lldb-private-interfaces.h
++++ b/lldb/include/lldb/lldb-private-interfaces.h
+@@ -98,6 +98,8 @@
+     const FileSpec &dsym_bundle_fspec, const UUID *uuid, const ArchSpec *arch);
+ typedef std::optional<FileSpec> (*SymbolLocatorLocateExecutableSymbolFile)(
+     const ModuleSpec &module_spec, const FileSpecList &default_search_paths);
++typedef std::optional<FileSpec> (*SymbolLocatorLocateSourceFile)(
++    const ModuleSpec &module_spec, const FileSpec &file_spec);
+ typedef bool (*SymbolLocatorDownloadObjectAndSymbolFile)(
+     ModuleSpec &module_spec, Status &error, bool force_lookup,
+     bool copy_executable);
+--- a/lldb/include/lldb/Core/PluginManager.h
++++ b/lldb/include/lldb/Core/PluginManager.h
+@@ -438,6 +438,7 @@
+       SymbolLocatorDownloadObjectAndSymbolFile download_object_symbol_file =
+           nullptr,
+       SymbolLocatorFindSymbolFileInBundle find_symbol_file_in_bundle = nullptr,
++      SymbolLocatorLocateSourceFile locate_source_file = nullptr,
+       DebuggerInitializeCallback debugger_init_callback = nullptr);
+ 
+   static bool UnregisterPlugin(SymbolLocatorCreateInstance create_callback);
+@@ -461,6 +462,9 @@
+   static FileSpec FindSymbolFileInBundle(const FileSpec &dsym_bundle_fspec,
+                                          const UUID *uuid,
+                                          const ArchSpec *arch);
++
++  static std::optional<FileSpec> LocateSourceFile(const ModuleSpec &module_spec,
++                                                  const FileSpec &file_spec);
+ 
+   // Trace
+   static bool RegisterPlugin(
+--- a/lldb/source/Core/PluginManager.cpp
++++ b/lldb/source/Core/PluginManager.cpp
+@@ -1418,18 +1418,21 @@
+       SymbolLocatorLocateExecutableSymbolFile locate_executable_symbol_file,
+       SymbolLocatorDownloadObjectAndSymbolFile download_object_symbol_file,
+       SymbolLocatorFindSymbolFileInBundle find_symbol_file_in_bundle,
++      SymbolLocatorLocateSourceFile locate_source_file,
+       DebuggerInitializeCallback debugger_init_callback)
+       : PluginInstance<SymbolLocatorCreateInstance>(
+             name, description, create_callback, debugger_init_callback),
+         locate_executable_object_file(locate_executable_object_file),
+         locate_executable_symbol_file(locate_executable_symbol_file),
+         download_object_symbol_file(download_object_symbol_file),
+-        find_symbol_file_in_bundle(find_symbol_file_in_bundle) {}
++        find_symbol_file_in_bundle(find_symbol_file_in_bundle),
++        locate_source_file(locate_source_file) {}
+ 
+   SymbolLocatorLocateExecutableObjectFile locate_executable_object_file;
+   SymbolLocatorLocateExecutableSymbolFile locate_executable_symbol_file;
+   SymbolLocatorDownloadObjectAndSymbolFile download_object_symbol_file;
+   SymbolLocatorFindSymbolFileInBundle find_symbol_file_in_bundle;
++  SymbolLocatorLocateSourceFile locate_source_file;
+ };
+ typedef PluginInstances<SymbolLocatorInstance> SymbolLocatorInstances;
+ 
+@@ -1445,11 +1448,12 @@
+     SymbolLocatorLocateExecutableSymbolFile locate_executable_symbol_file,
+     SymbolLocatorDownloadObjectAndSymbolFile download_object_symbol_file,
+     SymbolLocatorFindSymbolFileInBundle find_symbol_file_in_bundle,
++    SymbolLocatorLocateSourceFile locate_source_file,
+     DebuggerInitializeCallback debugger_init_callback) {
+   return GetSymbolLocatorInstances().RegisterPlugin(
+       name, description, create_callback, locate_executable_object_file,
+       locate_executable_symbol_file, download_object_symbol_file,
+-      find_symbol_file_in_bundle, debugger_init_callback);
++      find_symbol_file_in_bundle, locate_source_file, debugger_init_callback);
+ }
+ 
+ bool PluginManager::UnregisterPlugin(
+@@ -1533,6 +1537,23 @@
+   return {};
+ }
+ 
++std::optional<FileSpec>
++PluginManager::LocateSourceFile(const ModuleSpec &module_spec,
++                                const FileSpec &file_spec) {
++  auto instances = GetSymbolLocatorInstances().GetSnapshot();
++  for (auto &instance : instances) {
++    if (instance.locate_source_file) {
++      std::optional<FileSpec> result;
++      {
++        result = instance.locate_source_file(module_spec, file_spec);
++      }
++      if (result)
++        return *result;
++    }
++  }
++  return std::nullopt;
++}
++
+ #pragma mark Trace
+ 
+ struct TraceInstance
+--- a/lldb/source/Core/SourceManager.cpp
++++ b/lldb/source/Core/SourceManager.cpp
+@@ -13,6 +13,7 @@
+ #include "lldb/Core/Debugger.h"
+ #include "lldb/Core/FormatEntity.h"
+ #include "lldb/Core/Highlighter.h"
++#include "lldb/Core/PluginManager.h"
+ #include "lldb/Core/Module.h"
+ #include "lldb/Core/ModuleList.h"
+ #include "lldb/Host/FileSystem.h"
+@@ -540,6 +541,31 @@
+           if (remapped)
+             SetSupportFile(std::make_shared<SupportFile>(
+                 *remapped, support_file_sp->GetChecksum()));
++        }
++      }
++
++      // Try Plugins
++      {
++        FileSpec file_spec = GetSupportFile()->GetSpecOnly();
++        if (!FileSystem::Instance().Exists(file_spec)) {
++          bool check_inlines = false;
++          SymbolContextList sc_list;
++          size_t num_matches =
++              target_sp->GetImages().ResolveSymbolContextForFilePath(
++                  file_spec.GetFilename().AsCString(), 0, check_inlines,
++                  eSymbolContextModule | eSymbolContextCompUnit, sc_list);
++          if (num_matches > 0) {
++            SymbolContext sc;
++            sc_list.GetContextAtIndex(0, sc);
++            ModuleSpec module_spec;
++            module_spec.GetUUID() = sc.module_sp->GetUUID();
++            const std::optional<FileSpec> result =
++                PluginManager::LocateSourceFile(module_spec, file_spec);
++            if (result.has_value()) {
++              SetSupportFile(std::make_shared<SupportFile>(
++                  *result, support_file_sp->GetChecksum()));
++            }
++          }
+         }
+       }
+     }
+--- a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.h
++++ b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.h
+@@ -47,6 +47,9 @@
+   static std::optional<FileSpec>
+   LocateExecutableSymbolFile(const ModuleSpec &module_spec,
+                              const FileSpecList &default_search_paths);
++
++  static std::optional<FileSpec> LocateSourceFile(const ModuleSpec &module_spec,
++                                                  const FileSpec &file_spec);
+ };
+ 
+ } // namespace lldb_private
+--- a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp
++++ b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp
+@@ -112,7 +112,7 @@
+     PluginManager::RegisterPlugin(
+         GetPluginNameStatic(), GetPluginDescriptionStatic(), CreateInstance,
+         LocateExecutableObjectFile, LocateExecutableSymbolFile, nullptr,
+-        nullptr, SymbolLocatorDebuginfod::DebuggerInitialize);
++        nullptr, LocateSourceFile, SymbolLocatorDebuginfod::DebuggerInitialize);
+     llvm::HTTPClient::initialize();
+   });
+ }
+@@ -210,3 +210,27 @@
+     const ModuleSpec &module_spec, const FileSpecList &default_search_paths) {
+   return GetFileForModule(module_spec, llvm::getDebuginfodDebuginfoUrlPath);
+ }
++
++std::optional<FileSpec>
++SymbolLocatorDebuginfod::LocateSourceFile(const ModuleSpec &module_spec,
++                                          const FileSpec &file_spec) {
++  const UUID &module_uuid = module_spec.GetUUID();
++  const std::string file_path = file_spec.GetPath();
++  if (file_path.empty() || !module_uuid.IsValid() ||
++      !llvm::canUseDebuginfod() ||
++      !ModuleList::GetGlobalModuleListProperties().GetEnableExternalLookup())
++    return {};
++
++  llvm::object::BuildID build_id(module_uuid.GetBytes());
++
++  llvm::Expected<std::string> result =
++      llvm::getCachedOrDownloadSource(build_id, file_path);
++  if (result)
++    return FileSpec(*result);
++
++  Log *log = GetLog(LLDBLog::Source);
++  auto err_message = llvm::toString(result.takeError());
++  LLDB_LOGV(log, "Debuginfod failed to download source file {0} with error {1}",
++            file_path, err_message);
++  return std::nullopt;
++}
