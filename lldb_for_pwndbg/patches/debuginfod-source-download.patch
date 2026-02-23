@@ -152,7 +152,17 @@
  } // namespace lldb_private
 --- a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp
 +++ b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.cpp
-@@ -112,7 +112,7 @@
+@@ -16,6 +16,9 @@
+
+ #include "llvm/Debuginfod/Debuginfod.h"
+ #include "llvm/Debuginfod/HTTPClient.h"
++#include "llvm/ADT/StringExtras.h"
++#include "llvm/Support/FileSystem.h"
++#include "llvm/Support/Path.h"
+
+ using namespace lldb;
+ using namespace lldb_private;
+@@ -112,7 +115,7 @@
      PluginManager::RegisterPlugin(
          GetPluginNameStatic(), GetPluginDescriptionStatic(), CreateInstance,
          LocateExecutableObjectFile, LocateExecutableSymbolFile, nullptr,
@@ -161,10 +171,44 @@
      llvm::HTTPClient::initialize();
    });
  }
-@@ -210,3 +210,27 @@
+@@ -210,3 +213,83 @@
      const ModuleSpec &module_spec, const FileSpecList &default_search_paths) {
    return GetFileForModule(module_spec, llvm::getDebuginfodDebuginfoUrlPath);
  }
++
++// Returns the cache path for a source file with a human-readable filename:
++//   <cache_dir>/sources/<build_id_hex>/source-<djb2_hash>-<escaped_path>
++// e.g. ~/.cache/llvm-debuginfod/client/sources/66cd4a.../source-8612e4f5-#usr#src#...#shell.c
++static llvm::SmallString<256>
++getNiceSourceCachePath(llvm::StringRef cache_base,
++                       llvm::object::BuildIDRef build_id,
++                       llvm::StringRef file_path) {
++  // DJB2 hash (DJBX33A) of the full original path.
++  uint32_t Hash = 5381;
++  for (unsigned char Ch : file_path)
++    Hash = ((Hash << 5) + Hash) + Ch;
++  // Escape path: keep A-Z a-z 0-9 . - _ ; replace everything else with #.
++  std::string Escaped;
++  Escaped.reserve(file_path.size());
++  for (unsigned char Ch : file_path) {
++    if ((Ch >= 'A' && Ch <= 'Z') || (Ch >= 'a' && Ch <= 'z') ||
++        (Ch >= '0' && Ch <= '9') || Ch == '.' || Ch == '-' || Ch == '_')
++      Escaped += Ch;
++    else
++      Escaped += '#';
++  }
++  // Truncate from the front to stay within filename length limits (NAME_MAX).
++  const size_t MaxSuffix = 118; // 255 - len("source-deadbeef-")
++  if (Escaped.size() > MaxSuffix)
++    Escaped = Escaped.substr(Escaped.size() - MaxSuffix);
++  char Prefix[18];
++  snprintf(Prefix, sizeof(Prefix), "source-%08x-", Hash);
++  llvm::SmallString<256> NicePath(cache_base);
++  llvm::sys::path::append(NicePath, "sources",
++                          llvm::toHex(build_id, /*LowerCase=*/true),
++                          std::string(Prefix) + Escaped);
++  return NicePath;
++}
 +
 +std::optional<FileSpec>
 +SymbolLocatorDebuginfod::LocateSourceFile(const ModuleSpec &module_spec,
@@ -178,14 +222,36 @@
 +
 +  llvm::object::BuildID build_id(module_uuid.GetBytes());
 +
-+  llvm::Expected<std::string> result =
-+      llvm::getCachedOrDownloadSource(build_id, file_path);
-+  if (result)
-+    return FileSpec(*result);
++  PluginProperties &plugin_props = GetGlobalPluginProperties();
++  llvm::Expected<std::string> cache_path_or_err = plugin_props.GetCachePath();
++  if (!cache_path_or_err)
++    return {};
 +
-+  Log *log = GetLog(LLDBLog::Source);
-+  auto err_message = llvm::toString(result.takeError());
-+  LLDB_LOGV(log, "Debuginfod failed to download source file {0} with error {1}",
-+            file_path, err_message);
-+  return std::nullopt;
++  llvm::SmallString<256> NicePath =
++      getNiceSourceCachePath(*cache_path_or_err, build_id, file_path);
++
++  // Cache hit: nice file already exists, return it directly.
++  if (llvm::sys::fs::exists(NicePath))
++    return FileSpec(NicePath.str());
++
++  // Download via debuginfod, then move to the nice path.
++  std::string url_path = llvm::getDebuginfodSourceUrlPath(build_id, file_path);
++  llvm::SmallVector<llvm::StringRef> debuginfod_urls =
++      llvm::getDefaultDebuginfodUrls();
++  std::chrono::milliseconds timeout = plugin_props.GetTimeout();
++  llvm::Expected<std::string> Downloaded = llvm::getCachedOrDownloadArtifact(
++      llvm::getDebuginfodCacheKey(url_path), url_path, *cache_path_or_err,
++      debuginfod_urls, timeout);
++  if (!Downloaded) {
++    Log *log = GetLog(LLDBLog::Source);
++    LLDB_LOGV(log, "Debuginfod failed to download source file {0} with error {1}",
++              file_path, llvm::toString(Downloaded.takeError()));
++    return std::nullopt;
++  }
++
++  llvm::sys::fs::create_directories(llvm::sys::path::parent_path(NicePath));
++  if (!llvm::sys::fs::rename(*Downloaded, NicePath))
++    return FileSpec(NicePath.str());
++
++  return FileSpec(*Downloaded);
 +}
