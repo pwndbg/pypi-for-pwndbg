@@ -138,6 +138,49 @@
          }
        }
      }
+--- a/lldb/source/Target/StackFrame.cpp
++++ b/lldb/source/Target/StackFrame.cpp
+@@ -12,7 +12,11 @@
+ #include "lldb/Core/FormatEntity.h"
+ #include "lldb/Core/Mangled.h"
+ #include "lldb/Core/Module.h"
++#include "lldb/Core/ModuleList.h"
++#include "lldb/Core/PluginManager.h"
+ #include "lldb/Core/Value.h"
++#include "lldb/Host/FileSystem.h"
++#include "llvm/Debuginfod/Debuginfod.h"
+ #include "lldb/Symbol/CompileUnit.h"
+ #include "lldb/Symbol/Function.h"
+ #include "lldb/Symbol/Symbol.h"
+@@ -400,6 +404,28 @@
+             !m_sc.line_entry.IsValid()) {
+           m_sc.line_entry = sc.line_entry;
+           m_sc.line_entry.ApplyFileMappings(m_sc.target_sp);
++          // If file still doesn't exist locally and debuginfod is usable,
++          // try symbol locator plugins and re-apply file mappings.
++          // Guards are ordered cheapest-first: canUseDebuginfod() and
++          // GetEnableExternalLookup() are cheap boolean checks that avoid
++          // the stat() and plugin overhead in the common case where
++          // debuginfod is not configured or external lookup is disabled.
++          if (m_sc.target_sp && m_sc.module_sp &&
++              llvm::canUseDebuginfod() &&
++              ModuleList::GetGlobalModuleListProperties()
++                  .GetEnableExternalLookup() &&
++              !FileSystem::Instance().Exists(m_sc.line_entry.GetFile())) {
++            ModuleSpec mod_spec;
++            mod_spec.GetUUID() = m_sc.module_sp->GetUUID();
++            if (auto result = PluginManager::LocateSourceFile(
++                    mod_spec,
++                    m_sc.line_entry.original_file_sp->GetSpecOnly())) {
++              m_sc.target_sp->GetSourcePathMap().AppendUnique(
++                  m_sc.line_entry.original_file_sp->GetSpecOnly().GetPath(),
++                  result->GetPath(), /*notify=*/false);
++              m_sc.line_entry.ApplyFileMappings(m_sc.target_sp);
++            }
++          }
+         }
+       }
+     } else {
 --- a/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.h
 +++ b/lldb/source/Plugins/SymbolLocator/Debuginfod/SymbolLocatorDebuginfod.h
 @@ -47,6 +47,9 @@

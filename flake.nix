@@ -111,13 +111,14 @@
           v:
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
-            version = "23.0.0git";
+            version = "23.0.0";
             pypiVersion = "23.0.0.dev260209";
             monorepoSrc = pkgs.fetchFromGitHub {
-              owner = "llvm";
+              owner = "rchamala";
               repo = "llvm-project";
-              rev = "fed9abcb4796507622bdd9e2e36bc80260a5197b"; # refs/heads/main
-              hash = "sha256-xkfHSmcQIkobNu1khy6SGMYsgYvAg4bhDMgYAKQUKQ8=";
+              # rchamala:cleanup-dead-symbol-locator-callbacks
+              rev = "f00ec3033a8b828d3c83fa6a6bb5320f425122bb"; # refs/heads/main
+              hash = "sha256-lV5QFYQtdeFCDT3nqgw3gtPKvBn1b2e5nihiDQo8Djk=";
             };
           }
         ));

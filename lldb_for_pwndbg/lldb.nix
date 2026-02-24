@@ -68,7 +68,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
     ./patches/debuginfod-user-agent.patch
-    ./patches/debuginfod-source-download.patch
+#    ./patches/debuginfod-source-download.patch
 
     # Use pkg-config for curl to get transitive deps (openssl, nghttp2, etc.)
     ./patches/debuginfod-pkgconfig-curl.patch
@@ -124,6 +124,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
+    (lib.cmakeFeature "LLVM_VERSION_SUFFIX" "")
 
     (lib.cmakeFeature "LLVM_TABLEGEN" "${tblgen}/bin/llvm-tblgen")
     (lib.cmakeFeature "CLANG_TABLEGEN" "${tblgen}/bin/clang-tblgen")

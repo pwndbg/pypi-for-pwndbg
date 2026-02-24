@@ -93,6 +93,7 @@ libpython_dependencies = {
     },
     "3.12": {
         "linux": [
+            "_lldb.abi3.so",
             "_lldb.cpython-312-x86_64-linux-gnu.so",
             "_lldb.cpython-312-aarch64-linux-gnu.so",
             "_lldb.cpython-312-loongarch64-linux-gnu.so",
