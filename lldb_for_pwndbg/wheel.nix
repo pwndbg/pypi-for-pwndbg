@@ -114,61 +114,64 @@ let
             cp $LLDB_DIR/bin/lldb-server ./src/lldb_for_pwndbg/_vendor/bin/
 
             # Fix lib
-            lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
-            rm ./src/lldb/$lldb_python_so
-            cp $LLDB_DIR/lib/liblldb.so ./src/lldb/$lldb_python_so
+            lldb_python_so=$(basename $(ls ./src/lldb/native/_lldb*.so))
+            rm ./src/lldb/native/$lldb_python_so
+            cp $LLDB_DIR/lib/liblldb.so ./src/lldb/native/$lldb_python_so
             chmod -R +w ./src/
 
-            patchelf --set-rpath '$ORIGIN/../../../../lib' ./src/lldb/$lldb_python_so
+            patchelf --set-rpath '$ORIGIN/../../../../../lib' ./src/lldb/native/$lldb_python_so
 
             patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb
-            patchelf --set-rpath '$ORIGIN/../../../lldb' ./src/lldb_for_pwndbg/_vendor/bin/lldb
+            patchelf --set-rpath '$ORIGIN/../../../lldb/native' ./src/lldb_for_pwndbg/_vendor/bin/lldb
             patchelf --replace-needed liblldb.so.${lldbMajorMinorVersion} $lldb_python_so ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
             patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
             patchelf --remove-rpath ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
 
             # libpython is only needed for `lldb` not _lldb.so itself
-            libpython_name=$(patchelf --print-needed ./src/lldb/$lldb_python_so | grep libpython)
+            libpython_name=$(patchelf --print-needed ./src/lldb/native/$lldb_python_so | grep libpython)
             patchelf --add-needed $libpython_name --add-rpath '$ORIGIN/../../../../../../lib' ./src/lldb_for_pwndbg/_vendor/bin/lldb
-            patchelf --remove-needed $libpython_name --remove-rpath ./src/lldb/$lldb_python_so
+            patchelf --remove-needed $libpython_name --remove-rpath ./src/lldb/native/$lldb_python_so
         else
             # Fix lib
-            lldb_python_so=$(basename $(ls ./src/lldb/_lldb*.so))
-            rm ./src/lldb/$lldb_python_so
-            cp $LLDB_DIR/lib/liblldb.dylib ./src/lldb/$lldb_python_so
+            lldb_python_so=$(basename $(ls ./src/lldb/native/_lldb*.so))
+            rm ./src/lldb/native/$lldb_python_so
+            cp $LLDB_DIR/lib/liblldb.dylib ./src/lldb/native/$lldb_python_so
             ls -al ./src/
             chmod -R +w ./src/
 
             install_name_tool \
                 -change \
                 ${lldb_drv.python}/lib/libpython${lldb_drv.pythonVersion}.dylib \
-                '@loader_path/../../../../lib/libpython${lldb_drv.pythonVersion}.dylib' \
-                ./src/lldb/$lldb_python_so
+                '@loader_path/../../../../../lib/libpython${lldb_drv.pythonVersion}.dylib' \
+                ./src/lldb/native/$lldb_python_so
 
             install_name_tool \
                 -id $lldb_python_so \
-                ./src/lldb/$lldb_python_so
+                ./src/lldb/native/$lldb_python_so
 
             install_name_tool \
                 -change \
                 '@rpath/liblldb.${lldb_drv.version}.dylib' \
-                "@executable_path/../../../lldb/$lldb_python_so" \
+                "@executable_path/../../../lldb/native/$lldb_python_so" \
                 ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
             # extra patch libcurl.4.dylib
-            org_libcurl_path=$(otool -L ./src/lldb/$lldb_python_so | grep libcurl.4.dylib | awk '{print $1}')
-            cp $org_libcurl_path ./src/lldb/libcurl.4.dylib
+            org_libcurl_path=$(otool -L ./src/lldb/native/$lldb_python_so | grep libcurl.4.dylib | awk '{print $1}')
+            cp $org_libcurl_path ./src/lldb/native/libcurl.4.dylib
 
             install_name_tool \
                 -id "libcurl.4.dylib" \
-                ./src/lldb/libcurl.4.dylib
+                ./src/lldb/native/libcurl.4.dylib
 
             install_name_tool \
                 -change \
                 $org_libcurl_path \
                 "@loader_path/libcurl.4.dylib" \
-                ./src/lldb/$lldb_python_so
+                ./src/lldb/native/$lldb_python_so
+
+            llvm-strip -S ./src/lldb/native/libcurl.4.dylib
+            nuke-refs ./src/lldb/native/libcurl.4.dylib
         fi
 
         # this file is unused
@@ -191,14 +194,14 @@ let
             nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         fi
 
-        llvm-strip -S ./src/lldb/$lldb_python_so
-        nuke-refs ./src/lldb/$lldb_python_so
+        llvm-strip -S ./src/lldb/native/$lldb_python_so
+        nuke-refs ./src/lldb/native/$lldb_python_so
 
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb
         if [ "$IS_LINUX" -eq 1 ]; then
             python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
         fi
-        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb/$lldb_python_so
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb/native/$lldb_python_so
 
         python3 setup.py bdist_wheel
         mv dist/*.whl $out/$WHEEL_OUT_NAME.whl
