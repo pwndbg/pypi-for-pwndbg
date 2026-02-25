@@ -264,6 +264,13 @@
                       "no-engine"
                       "no-dso"
                     ];
+                    configureScript =
+                      if prev.stdenv.targetPlatform.system == "armv7l-linux" then
+                        "${old.configureScript} -mcpu=baseline"
+                      else if prev.stdenv.targetPlatform.system == "i686-linux" then
+                        "${old.configureScript} -DBROKEN_CLANG_ATOMICS"
+                      else
+                        old.configureScript;
                   });
               pkgDarwin = prev.pkgsStatic.openssl.overrideAttrs (old: {
                 configureFlags = (old.configureFlags or [ ]) ++ [
