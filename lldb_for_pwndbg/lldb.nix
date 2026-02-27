@@ -64,6 +64,9 @@ stdenvOver.mkDerivation (finalAttrs: {
   };
 
   patches = [
+    # temporary fix for: https://github.com/llvm/llvm-project/issues/183388
+    ./patches/fix-assembly-type-system.patch
+
     # temporary fix for: https://github.com/llvm/llvm-project/issues/155692
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
@@ -159,6 +162,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeBool "LLDB_ENABLE_LUA" false)
     (lib.cmakeBool "LLDB_ENABLE_SWIG" true)
     (lib.cmakeBool "LLDB_ENABLE_PYTHON" true)
+    (lib.cmakeBool "LLDB_ENABLE_PYTHON_LIMITED_API" true)
 
     # libc.so.6 Unable to initialize decompressor for section '.debug_abbrev'
     (lib.cmakeBool "LLVM_ENABLE_ZLIB" true)
