@@ -26,9 +26,12 @@
 
   libcxx,
   python3,
+  liblldb_stub,
   pkg-config,
 }:
 let
+  versionMajorMinor = lib.versions.majorMinor version;
+
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
     inherit version monorepoSrc;
   };
@@ -49,18 +52,22 @@ stdenvOver.mkDerivation (finalAttrs: {
   enableParallelBuilding = true;
 
   # this option break alot of cross build..
-  hardeningDisable =
-    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
-      "zerocallusedregs"
-    ]
-    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
-      "stackclashprotection"
-    ];
+  hardeningDisable = [
+    "bindnow"
+    "relro"
+  ]
+  ++ lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
+    "zerocallusedregs"
+  ]
+  ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
+    "stackclashprotection"
+  ];
 
   passthru = {
     pythonVersion = python3.pythonVersion;
     python = python3;
     pypiVersion = pypiVersion;
+    liblldb_stub = liblldb_stub.override { llvmVersion = versionMajorMinor; };
   };
 
   patches = [
@@ -179,10 +186,18 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
-    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
+#    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
+  ]
+  ++ lib.optionals stdenv.targetPlatform.isLinux [
+    # make `lldb` binary with lazy symbols, that will allow `libpython_loader_lldb.so` to work :)
+    (lib.cmakeFeature "CMAKE_EXE_LINKER_FLAGS" "-Wl,-z,lazy")
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
+
+    # Allow undefined Python symbols in liblldb.dylib so that the
+    # libpython_loader shim can supply them via RTLD_GLOBAL at runtime.
+    (lib.cmakeFeature "CMAKE_SHARED_LINKER_FLAGS" "-Wl,-undefined,dynamic_lookup")
   ];
 
   ninjaFlags = [

@@ -1,5 +1,6 @@
 {
   lldb_drv,
+  libpython_loader_lldb,
   lib,
   runCommand,
   stdenv,
@@ -98,9 +99,10 @@ let
         cp -rf ${./src} src
         chmod -R +w ./src/
 
+        MIN_PY_VERSION="cp310"
         PY_VERSION="${removeDot lldb_drv.pythonVersion}"
         LLDB_DIR="${lldb_drv}"
-        WHEEL_OUT_NAME=lldb_for_pwndbg-${lldb_drv.pypiVersion}-cp$PY_VERSION-cp$PY_VERSION-${wheelType}
+        WHEEL_OUT_NAME=lldb_for_pwndbg-${lldb_drv.pypiVersion}-$MIN_PY_VERSION-abi3-${wheelType}
 
         mkdir -p ./src/lldb_for_pwndbg/_vendor/bin
         mkdir -p ./src/lldb_for_pwndbg/_vendor/lib
@@ -119,18 +121,24 @@ let
             cp $LLDB_DIR/lib/liblldb.so ./src/lldb/native/$lldb_python_so
             chmod -R +w ./src/
 
-            patchelf --set-rpath '$ORIGIN/../../../../../lib' ./src/lldb/native/$lldb_python_so
-
             patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb
-            patchelf --set-rpath '$ORIGIN/../../../lldb/native' ./src/lldb_for_pwndbg/_vendor/bin/lldb
-            patchelf --replace-needed liblldb.so.${lldbMajorMinorVersion} $lldb_python_so ./src/lldb_for_pwndbg/_vendor/bin/lldb
-
             patchelf --set-interpreter ${interpreterPath} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
             patchelf --remove-rpath ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
 
-            # libpython is only needed for `lldb` not _lldb.so itself
+            # Bundle libpython_loader shim and use it instead of a specific libpython.
+            # The shim reads PYTHONLOADER_LIBPYTHON (set by the Python wrapper) and dlopen's
+            # the real libpython with RTLD_GLOBAL before any Python C API is called.
+            mkdir -p ./src/lldb_for_pwndbg/_vendor/lib
+            cp ${libpython_loader_lldb}/lib/libpython_loader_lldb.so ./src/lldb_for_pwndbg/_vendor/lib/
+            cp ${lldb_drv.liblldb_stub}/lib/liblldb_stub.so ./src/lldb_for_pwndbg/_vendor/lib/
+
+            patchelf --set-rpath '$ORIGIN/../lib' \
+                     --add-needed libpython_loader_lldb.so \
+                     --replace-needed liblldb.so.${lldbMajorMinorVersion} liblldb_stub.so \
+                        ./src/lldb_for_pwndbg/_vendor/bin/lldb
+
+            # cleanup
             libpython_name=$(patchelf --print-needed ./src/lldb/native/$lldb_python_so | grep libpython)
-            patchelf --add-needed $libpython_name --add-rpath '$ORIGIN/../../../../../../lib' ./src/lldb_for_pwndbg/_vendor/bin/lldb
             patchelf --remove-needed $libpython_name --remove-rpath ./src/lldb/native/$lldb_python_so
         else
             # Fix lib
@@ -140,10 +148,15 @@ let
             ls -al ./src/
             chmod -R +w ./src/
 
+            # Bundle libpython_loader shim and redirect the libpython load command to it.
+            # The shim reads LLDB_LIBPYTHON (set by the Python wrapper) and dlopen's
+            # the real libpython with RTLD_GLOBAL. liblldb is built with
+            # -undefined dynamic_lookup so Python symbols resolve at runtime.
+            cp ${libpython_loader_lldb}/lib/libpython_loader_lldb.dylib ./src/lldb/native/
             install_name_tool \
                 -change \
                 ${lldb_drv.python}/lib/libpython${lldb_drv.pythonVersion}.dylib \
-                '@loader_path/../../../../../lib/libpython${lldb_drv.pythonVersion}.dylib' \
+                '@loader_path/libpython_loader_lldb.dylib' \
                 ./src/lldb/native/$lldb_python_so
 
             install_name_tool \
@@ -197,13 +210,24 @@ let
         llvm-strip -S ./src/lldb/native/$lldb_python_so
         nuke-refs ./src/lldb/native/$lldb_python_so
 
-        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb
         if [ "$IS_LINUX" -eq 1 ]; then
-            python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+            llvm-strip -S ./src/lldb/native/libpython_loader_lldb.so
+            nuke-refs ./src/lldb/native/libpython_loader_lldb.so
+        else
+            llvm-strip -S ./src/lldb/native/libpython_loader_lldb.dylib
+            nuke-refs ./src/lldb/native/libpython_loader_lldb.dylib
         fi
-        python3 ${./verify.py} ${stdenv.targetPlatform.system} ${lldb_drv.pythonVersion} ./src/lldb/native/$lldb_python_so
 
-        python3 setup.py bdist_wheel
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb
+        if [ "$IS_LINUX" -eq 1 ]; then
+            python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
+            python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/libpython_loader_lldb.so
+        else
+            python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/libpython_loader_lldb.dylib
+        fi
+        python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/$lldb_python_so
+
+        python3 setup.py bdist_wheel --py-limited-api $MIN_PY_VERSION
         mv dist/*.whl $out/$WHEEL_OUT_NAME.whl
       '';
 in

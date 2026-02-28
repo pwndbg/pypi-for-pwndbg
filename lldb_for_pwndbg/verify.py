@@ -6,8 +6,7 @@ import os
 from pathlib import Path
 
 system = sys.argv[1]
-python_version = sys.argv[2]
-binary_path = Path(sys.argv[3])
+binary_path = Path(sys.argv[2])
 
 
 def eprint(msg: str):
@@ -54,74 +53,20 @@ else:
     iter_deps = iter_elf_deps
 
 
+# libpython_loader.so/dylib is the shim that reads LLDB_LIBPYTHON at runtime
+# and dlopen's the real libpython - no version-specific dependency needed.
 libpython_dependencies = {
-    "3.10": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.10.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.10.dylib",
-        ],
-    },
-    "3.11": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.11.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.11.dylib",
-        ],
-    },
-    "3.12": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.12.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.12.dylib",
-        ],
-    },
-    "3.13": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.13.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.13.dylib",
-        ],
-    },
-    "3.14": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.14.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.14.dylib",
-        ],
-    },
-    "3.15": {
-        "linux": [
-            "_lldb.abi3.so",
-            "libpython3.15.so.1.0",
-        ],
-        "darwin": [
-            "_lldb.abi3.so",
-            "@executable_path/../../../lldb/native/_lldb.abi3.so",
-            "@loader_path/../../../../../lib/libpython3.15.dylib",
-        ],
-    },
-}[python_version][system.split("-")[1]]
+    "linux": [
+        "_lldb.abi3.so",
+        "liblldb_stub.so",
+        "libpython_loader_lldb.so",
+    ],
+    "darwin": [
+        "_lldb.abi3.so",
+        "@executable_path/../../../lldb/native/_lldb.abi3.so",
+        "@loader_path/libpython_loader_lldb.dylib",
+    ],
+}[system.split("-")[1]]
 
 allowlist_dependencies = {
     "x86_64-linux": [
