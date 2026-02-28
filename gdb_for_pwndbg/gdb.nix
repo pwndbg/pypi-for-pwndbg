@@ -80,6 +80,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     bison
     flex
     perl
+    breakpointHook
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
   ];
@@ -112,6 +113,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   env.NIX_CFLAGS_COMPILE = builtins.concatStringsSep " " (
     [
       "-Wno-format-nonliteral"
+      "-fPIC"
     ]
     ++ lib.optionals stdenv.targetPlatform.isLinux [
       "-Wl,--build-id=sha1"
@@ -212,4 +214,48 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   dontStrip = true;
   doCheck = false;
+
+  postInstall = ''
+    cd gdb
+
+    substituteInPlace ../../gdb/gdb.c \
+      --replace-fail 'main (int argc, char **argv)' 'mainX (int argc, char **argv)'
+
+    substituteInPlace ../../gdb/maint.c \
+      --replace-fail 'extern int main (int, char **);' '//extern int main (int, char **);'
+
+    substituteInPlace ../../gdb/maint.c \
+      --replace-fail 'monstartup ((unsigned long) &main, (unsigned long) TEXTEND);' '//monstartup ((unsigned long) &main, (unsigned long) TEXTEND);'
+
+    make libgdb.a
+    gcc -shared -o libgdb.so \
+      -Wl,--whole-archive ./libgdb.a -Wl,--no-whole-archive \
+      ../gdbsupport/libgdbsupport.a \
+      ../libctf/.libs/libctf.a \
+      ../bfd/.libs/libbfd.a \
+      ../libiberty/pic/libiberty.a \
+      ../readline/readline/libreadline.a \
+      ../libdecnumber/libdecnumber.a \
+      ../opcodes/.libs/libopcodes.a \
+      ../gnulib/import/libgnu.a \
+      ../readline/readline/libhistory.a \
+      -ldebuginfod \
+      -lpython3.10 \
+      -lmpfr \
+      -llzma \
+      -lz \
+      -lgmp \
+      -lncurses \
+      -ltinfo \
+      -lexpat \
+      -lzstd \
+      -lsource-highlight \
+      -lipt \
+      ${libiconv-static}/lib/libiconv.a \
+      ${libcxx}/lib/libc++.a ${libcxx}/lib/libc++abi.a \
+      -lm \
+      -Wl,--no-undefined
+    mkdir -p $out/lib/
+    cp libgdb.so $out/lib/
+  '';
 })
