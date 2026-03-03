@@ -188,8 +188,9 @@ let
             nuke-refs ./src/lldb/native/libcurl.4.dylib
 
             # debug symbols
-            cp -rf $LLDB_DIR/lib/liblldb.dylib*.dSYM ./src/lldb/native/$lldb_python_so.dSYM
+            cp -rf $LLDB_DIR/lib/liblldb*.dSYM ./src/lldb/native/$lldb_python_so.dSYM
             cp -rf $LLDB_DIR/bin/lldb.dSYM ./src/lldb_for_pwndbg/_vendor/lldb.dSYM
+            chmod -R +w ./src/
         fi
 
         # this file is unused
@@ -202,9 +203,8 @@ let
             -C ./src \
             --transform="s|^./|./$WHEEL_OUT_NAME/|" \
             .
-        else
-          find ./src/ -name "*.dSYM" -type d -prune -exec rm -rf {} +
         fi
+        find ./src/ -name "*.dSYM" -type d -prune -exec rm -rf {} +
 
         llvm-strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
         nuke-refs ./src/lldb_for_pwndbg/_vendor/bin/lldb

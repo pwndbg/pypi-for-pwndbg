@@ -145,6 +145,7 @@ allowlist_dependencies = {
         "/System/Library/Frameworks/Security.framework/Versions/A/Security",
         "/usr/lib/libSystem.B.dylib",
         "/usr/lib/libobjc.A.dylib",
+        "/usr/lib/libc++.1.dylib",
         "@loader_path/libcurl.4.dylib",
         "@executable_path/../lib/libpython_loader_lldb.dylib",
     ],
