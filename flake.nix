@@ -88,7 +88,7 @@
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
             version = "22.1.0";
-            pypiVersion = "22.1.0.post1";
+            pypiVersion = "22.1.0.post2";
             monorepoSrc = pkgs.fetchFromGitHub {
               owner = "llvm";
               repo = "llvm-project";
@@ -119,6 +119,9 @@
         final: prev: {
           zig_glibc_2_28 = (prev.callPackage ./zig { })."0.15";
           libclang_rt_ppc_builtins = prev.callPackage ./zig/libclang_rt_ppc_builtins.nix { };
+          liblldb_stub = prev.callPackage ./liblldb_stub { };
+          libpython_loader_lldb = prev.callPackage ./libpython_loader_lldb { };
+          libpython_stub = prev.callPackage ./libpython_stub { };
 
           zlib-static = prev.pkgsStatic.zlib;
           zstd-static = prev.pkgsStatic.zstd;
@@ -394,7 +397,11 @@
           wheel-lldb_dev-for-pwndbg = pkgs.wheel-lldb_dev-for-pwndbg;
 
           pkgsCross = pkgs.pkgsCross;
+
           libcurl-static = pkgs.libcurl-static;
+          libpython_loader_lldb = pkgs.libpython_loader_lldb;
+          liblldb_stub = pkgs.liblldb_stub;
+          libpython_stub = pkgs.libpython_stub;
         }
       );
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);

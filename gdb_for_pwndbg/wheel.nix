@@ -8,7 +8,6 @@
   python3,
   python3Packages,
   bintools,
-  libxcrypt,
   darwin,
   llvm,
 }:
