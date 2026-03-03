@@ -25,6 +25,15 @@ stdenvOver.mkDerivation {
     lib.optionals stdenv.hostPlatform.isLinux [ patchelf ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [ darwin.cctools ];
 
+  # this option break alot of cross build..
+  hardeningDisable =
+    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
+      "zerocallusedregs"
+    ]
+    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
+      "stackclashprotection"
+    ];
+
   buildPhase =
     if stdenv.targetPlatform.isLinux then
       ''
