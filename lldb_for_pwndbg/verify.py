@@ -63,8 +63,8 @@ libpython_dependencies = {
     ],
     "darwin": [
         "_lldb.abi3.so",
-        "@executable_path/../../../lldb/native/_lldb.abi3.so",
-        "@loader_path/libpython_loader_lldb.dylib",
+        "libpython_loader_lldb.dylib",
+        "@loader_path/libpython_stub.dylib",
     ],
 }[system.split("-")[1]]
 
@@ -133,7 +133,9 @@ allowlist_dependencies = {
         "/System/Library/Frameworks/Security.framework/Versions/A/Security",
         "/usr/lib/libSystem.B.dylib",
         "/usr/lib/libobjc.A.dylib",
+        "/usr/lib/libc++.1.dylib",
         "@loader_path/libcurl.4.dylib",
+        "@executable_path/../lib/libpython_loader_lldb.dylib",
     ],
     "aarch64-darwin": [
         "/usr/lib/libcompression.dylib",
@@ -144,6 +146,7 @@ allowlist_dependencies = {
         "/usr/lib/libSystem.B.dylib",
         "/usr/lib/libobjc.A.dylib",
         "@loader_path/libcurl.4.dylib",
+        "@executable_path/../lib/libpython_loader_lldb.dylib",
     ],
 }[system]
 

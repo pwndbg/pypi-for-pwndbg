@@ -1,6 +1,7 @@
 {
   lldb_drv,
   libpython_loader_lldb,
+  libpython_stub,
   lib,
   runCommand,
   stdenv,
@@ -148,25 +149,24 @@ let
             ls -al ./src/
             chmod -R +w ./src/
 
-            # Bundle libpython_loader shim and redirect the libpython load command to it.
-            # The shim reads LLDB_LIBPYTHON (set by the Python wrapper) and dlopen's
-            # the real libpython with RTLD_GLOBAL. liblldb is built with
-            # -undefined dynamic_lookup so Python symbols resolve at runtime.
-            cp ${libpython_loader_lldb}/lib/libpython_loader_lldb.dylib ./src/lldb/native/
+            cp ${libpython_stub}/lib/libpython_stub.dylib ./src/lldb/native/
             install_name_tool \
                 -change \
                 ${lldb_drv.python}/lib/libpython${lldb_drv.pythonVersion}.dylib \
-                '@loader_path/libpython_loader_lldb.dylib' \
+                '@loader_path/libpython_stub.dylib' \
                 ./src/lldb/native/$lldb_python_so
 
             install_name_tool \
                 -id $lldb_python_so \
                 ./src/lldb/native/$lldb_python_so
 
+            mkdir -p ./src/lldb_for_pwndbg/_vendor/lib
+            cp ${libpython_loader_lldb}/lib/libpython_loader_lldb.dylib ./src/lldb_for_pwndbg/_vendor/lib/
+
             install_name_tool \
                 -change \
                 '@rpath/liblldb.${lldb_drv.version}.dylib' \
-                "@executable_path/../../../lldb/native/$lldb_python_so" \
+                "@executable_path/../lib/libpython_loader_lldb.dylib" \
                 ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
             # extra patch libcurl.4.dylib
@@ -211,19 +211,23 @@ let
         nuke-refs ./src/lldb/native/$lldb_python_so
 
         if [ "$IS_LINUX" -eq 1 ]; then
-            llvm-strip -S ./src/lldb/native/libpython_loader_lldb.so
-            nuke-refs ./src/lldb/native/libpython_loader_lldb.so
+            llvm-strip -S ./src/lldb_for_pwndbg/_vendor/lib/libpython_loader_lldb.so
+            nuke-refs ./src/lldb_for_pwndbg/_vendor/lib/libpython_loader_lldb.so
+
+            llvm-strip -S ./src/lldb_for_pwndbg/_vendor/lib/liblldb_stub.so
+            nuke-refs ./src/lldb_for_pwndbg/_vendor/lib/liblldb_stub.so
         else
-            llvm-strip -S ./src/lldb/native/libpython_loader_lldb.dylib
-            nuke-refs ./src/lldb/native/libpython_loader_lldb.dylib
+            llvm-strip -S ./src/lldb_for_pwndbg/_vendor/lib/libpython_loader_lldb.dylib
+            nuke-refs ./src/lldb_for_pwndbg/_vendor/lib/libpython_loader_lldb.dylib
+
+            llvm-strip -S ./src/lldb/native/libpython_stub.dylib
+            nuke-refs ./src/lldb/native/libpython_stub.dylib
         fi
 
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb
         if [ "$IS_LINUX" -eq 1 ]; then
             python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
             python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/libpython_loader_lldb.so
-        else
-            python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/libpython_loader_lldb.dylib
         fi
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/$lldb_python_so
 

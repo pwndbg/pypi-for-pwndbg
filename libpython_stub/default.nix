@@ -12,10 +12,10 @@ let
   stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
 in
 stdenvOver.mkDerivation {
-  pname = "libpython_loader_lldb";
+  pname = "libpython_stub";
   version = "1";
 
-  src = ./libpython_loader.c;
+  src = ./stub.c;
 
   # Single C file, no configure/make needed
   dontUnpack = true;
@@ -27,14 +27,14 @@ stdenvOver.mkDerivation {
   buildPhase =
     if stdenv.targetPlatform.isLinux then
       ''
-        $CC -shared -fPIC -o libpython_loader_lldb.so $src -ldl \
-            -Wl,--soname=libpython_loader_lldb.so \
+        $CC -shared -fPIC -o libpython_stub.so $src \
+            -Wl,--soname=libpython_stub.so \
             -Wl,--no-undefined
       ''
     else
       ''
-        $CC -shared -o libpython_loader_lldb.dylib $src \
-            -install_name libpython_loader_lldb.dylib
+        $CC -shared -o libpython_stub.dylib $src \
+            -install_name libpython_stub.dylib
       '';
 
   installPhase = ''
@@ -42,13 +42,12 @@ stdenvOver.mkDerivation {
     ${
       if stdenv.targetPlatform.isLinux then
         ''
-          patchelf --set-rpath '$ORIGIN' libpython_loader_lldb.so
-          cp libpython_loader_lldb.so $out/lib/
+          patchelf --remove-rpath libpython_stub.so
+          cp libpython_stub.so $out/lib/
         ''
       else
         ''
-          install_name_tool -add_rpath "@loader_path/" libpython_loader_lldb.dylib
-          cp libpython_loader_lldb.dylib $out/lib/
+          cp libpython_stub.dylib $out/lib/
         ''
     }
   '';

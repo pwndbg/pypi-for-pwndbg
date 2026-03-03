@@ -133,6 +133,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
+    (lib.cmakeFeature "CMAKE_BUILD_TYPE" "RelWithDebInfo")
 
     (lib.cmakeFeature "LLVM_TABLEGEN" "${tblgen}/bin/llvm-tblgen")
     (lib.cmakeFeature "CLANG_TABLEGEN" "${tblgen}/bin/clang-tblgen")
@@ -186,7 +187,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
-#    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
+    (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
   ++ lib.optionals stdenv.targetPlatform.isLinux [
     # make `lldb` binary with lazy symbols, that will allow `libpython_loader_lldb.so` to work :)
@@ -197,7 +198,8 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     # Allow undefined Python symbols in liblldb.dylib so that the
     # libpython_loader shim can supply them via RTLD_GLOBAL at runtime.
-    (lib.cmakeFeature "CMAKE_SHARED_LINKER_FLAGS" "-Wl,-undefined,dynamic_lookup")
+    (lib.cmakeFeature "CMAKE_SHARED_LINKER_FLAGS" "-Wl,-flat_namespace")
+    (lib.cmakeFeature "CMAKE_EXE_LINKER_FLAGS" "-Wl,-undefined,dynamic_lookup,-flat_namespace")
   ];
 
   ninjaFlags = [
@@ -205,7 +207,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     "lldb-server"
   ];
 
-  installPhase = ''
+  installPhase = (lib.optionalString stdenv.targetPlatform.isDarwin ''
+    find ./bin/ -type f -exec dsymutil {} \;
+    find ./lib/ -type f -name "*.dylib" -exec dsymutil {} \;
+  '') + ''
     mkdir $out
     mv bin $out/
     mv lib $out/

@@ -34,7 +34,7 @@ stdenvOver.mkDerivation {
     else
       ''
         $CC -shared -o libpython_loader_gdb.dylib $src \
-            -install_name @rpath/libpython_loader_gdb.dylib
+            -install_name libpython_loader_gdb.dylib
       '';
 
   installPhase = ''

@@ -1,0 +1,15 @@
+--- a/gdb/Makefile.in
++++ b/gdb/Makefile.in
+@@ -2362,6 +2362,12 @@ libgdb.a: $(LIBGDB_OBS)
+ 	-rm -f libgdb.a
+ 	$(AR) q libgdb.a $(LIBGDB_OBS)
+ 	$(RANLIB) libgdb.a
++
++libgdb.so: $(LIBGDB_OBS) $(CDEPS) $(TDEPLIBS)
++	$(SILENCE) rm -f libgdb.so
++	$(ECHO_CXXLD) $(CC_LD) -shared $(INTERNAL_LDFLAGS) -Wl,-z,undefs -Wl,-soname,libgdb.so \
++		-o libgdb.so $(LIBGDB_OBS) \
++		$(TDEPLIBS) $(TUI_LIBRARY) $(CLIBS) $(LOADLIBES)
+
+ # Removing the old gdb first works better if it is running, at least on SunOS.
+ gdb$(EXEEXT): gdb.o $(LIBGDB_OBS) $(CDEPS) $(TDEPLIBS)
