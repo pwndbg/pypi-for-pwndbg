@@ -80,7 +80,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     bison
     flex
     perl
-    breakpointHook
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
   ];
