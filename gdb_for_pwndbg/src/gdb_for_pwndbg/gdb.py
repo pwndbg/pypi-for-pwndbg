@@ -40,9 +40,23 @@ def get_libpython_name():
     raise RuntimeError(f'INSTSONAME has invalid path: {libpy}')
 
 
-def find_libpython():
-    return next(filter(lambda p: p.exists(), iter_libpython_paths()), None)
+def check_lib_python():
+    in_venv = sys.base_exec_prefix != sys.exec_prefix
+    if in_venv:
+        # Install libpython into venv
 
+        venv_libpath = pathlib.Path(sys.exec_prefix) / 'lib' / get_libpython_name()
+        if not venv_libpath.exists():
+            py_libpath = next(filter(lambda p: p.exists(), iter_libpython_paths()), None)
+            if py_libpath is None:
+                # TODO: only debian like?
+                message = (
+                    "[error] missing libpython. "
+                    "Please install python3-dev or python3-devel"
+                )
+                raise NotImplementedError(message)
+
+            venv_libpath.symlink_to(py_libpath)
 
 def get_loader():
     if sys.platform != "linux":
@@ -86,15 +100,9 @@ def exec_prog(prog, args, envs):
 
 
 def main():
-    py_libpath = find_libpython()
-    if py_libpath is None:
-        raise RuntimeError(
-            "[error] missing libpython. "
-            "Please install python3-dev or python3-devel"
-        )
+    check_lib_python()
 
     envs = os.environ.copy()
-    envs['PYTHONLOADER_LIBPYTHON'] = str(py_libpath)
     envs['PYTHONNOUSERSITE'] = '1'
     envs['PYTHONPATH'] = ':'.join(sys.path)
     envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
