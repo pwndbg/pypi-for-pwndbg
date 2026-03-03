@@ -26,7 +26,7 @@ stdenvOver.mkDerivation {
 
   # this option break alot of cross build..
   hardeningDisable =
-    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
+    lib.optionals (stdenv.targetPlatform.isLinux && stdenv.buildPlatform != stdenv.targetPlatform) [
       "zerocallusedregs"
     ]
     ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
