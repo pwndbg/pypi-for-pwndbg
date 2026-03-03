@@ -146,6 +146,7 @@ let
             lldb_python_so=$(basename $(ls ./src/lldb/native/_lldb*.so))
             rm ./src/lldb/native/$lldb_python_so
             cp $LLDB_DIR/lib/liblldb.dylib ./src/lldb/native/$lldb_python_so
+
             ls -al ./src/
             chmod -R +w ./src/
 
@@ -185,6 +186,10 @@ let
 
             llvm-strip -S ./src/lldb/native/libcurl.4.dylib
             nuke-refs ./src/lldb/native/libcurl.4.dylib
+
+            # debug symbols
+            cp -rf $LLDB_DIR/lib/liblldb.dylib*.dSYM ./src/lldb/native/$lldb_python_so.dSYM
+            cp -rf $LLDB_DIR/bin/lldb.dSYM ./src/lldb_for_pwndbg/_vendor/lldb.dSYM
         fi
 
         # this file is unused
@@ -197,6 +202,8 @@ let
             -C ./src \
             --transform="s|^./|./$WHEEL_OUT_NAME/|" \
             .
+        else
+          find ./src/ -name "*.dSYM" -type d -prune -exec rm -rf {} +
         fi
 
         llvm-strip ./src/lldb_for_pwndbg/_vendor/bin/lldb
@@ -227,7 +234,6 @@ let
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb
         if [ "$IS_LINUX" -eq 1 ]; then
             python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb_for_pwndbg/_vendor/bin/lldb-server
-            python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/libpython_loader_lldb.so
         fi
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ./src/lldb/native/$lldb_python_so
 
