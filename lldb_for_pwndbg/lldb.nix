@@ -121,9 +121,7 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   # https://discourse.nixos.org/t/cmakeflags-and-spaces-in-option-values/20170
   preConfigure = lib.optionalString stdenv.targetPlatform.isPower64 ''
-    cmakeFlagsArray+=(
-      "-DCMAKE_EXE_LINKER_FLAGS=\"-Wl,-z,lazy -L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins\""
-    )
+    cmakeFlagsArray+=(-DCMAKE_EXE_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins -z lazy")
   '';
 
   cmakeFlags = [
