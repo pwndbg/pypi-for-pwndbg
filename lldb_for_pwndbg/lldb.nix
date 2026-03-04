@@ -108,18 +108,6 @@ stdenvOver.mkDerivation (finalAttrs: {
   # since py3.14 probably this is required for cross compilation
   env._PYTHON_PROJECT_BASE = "${python3}";
 
-  env.LDFLAGS = builtins.concatStringsSep " " (
-    lib.optionals stdenv.targetPlatform.isDarwin [
-      # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
-      "-nostdlib++"
-      "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
-    ]
-    ++ lib.optionals stdenv.targetPlatform.isPower64 [
-      "-L${libclang_rt_ppc_builtins}/lib"
-      "-lclang_rt_ppc_builtins"
-    ]
-  );
-
   buildInputs = [
     zlib-static
     zstd-static
@@ -130,6 +118,13 @@ stdenvOver.mkDerivation (finalAttrs: {
     libcurl-static
     python3
   ];
+
+  # https://discourse.nixos.org/t/cmakeflags-and-spaces-in-option-values/20170
+  preConfigure = lib.optionalString stdenv.targetPlatform.isPower64 ''
+    cmakeFlagsArray+=(
+      "-DCMAKE_EXE_LINKER_FLAGS=\"-Wl,-z,lazy -L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins\""
+    )
+  '';
 
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
@@ -189,7 +184,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
     (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
-  ++ lib.optionals stdenv.targetPlatform.isLinux [
+  ++ lib.optionals (stdenv.targetPlatform.isLinux && !stdenv.targetPlatform.isPower64) [
     # make `lldb` binary with lazy symbols, that will allow `libpython_loader_lldb.so` to work :)
     (lib.cmakeFeature "CMAKE_EXE_LINKER_FLAGS" "-Wl,-z,lazy")
   ]
