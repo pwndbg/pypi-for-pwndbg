@@ -1,15 +1,6 @@
 diff --git a/gdb/debuginfod-support.c b/gdb/debuginfod-support.c
 --- a/gdb/debuginfod-support.c	(revision b61f17e6951ff630bc9090b0e82ec9b551497f92)
 +++ b/gdb/debuginfod-support.c	(date 1760637638182)
-@@ -48,7 +48,7 @@
-
- static const char *debuginfod_enabled =
- #if defined(HAVE_LIBDEBUGINFOD)
--  debuginfod_ask;
-+  debuginfod_on;
- #else
-   debuginfod_off;
- #endif
 @@ -228,6 +228,10 @@
  static bool
  debuginfod_is_enabled ()

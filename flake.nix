@@ -48,11 +48,11 @@
           v:
           pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
             python3 = pkgs."python${v}";
-            version = "17.1";
-            pypiVersion = "17.1.0.post2";
+            version = "17.2";
+            pypiVersion = "17.2.0.post1";
             src = pkgs.fetchurl {
-              url = "mirror://gnu/gdb/gdb-17.1.tar.xz";
-              hash = "sha256-FJlvX3TJ9o9aVD/cRbyngAIH+R+SrupsLnkYIsfG2HY=";
+              url = "mirror://gnu/gdb/gdb-17.2.tar.xz";
+              hash = "sha256-HANsDXLks9H7XJTIhjKt1vnXb018TS6nk8EqnxmjIow=";
             };
           }
         ));
