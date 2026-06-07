@@ -27,12 +27,8 @@ jobs:
 #          314,
 #          315,
         ]
-    environment:
-      name: pypi
-      url: https://pypi.org/p/lldb-for-pwndbg
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing on pypi
-      contents: write  # IMPORTANT: this permission is mandatory for github-release upload
+      contents: write  # IMPORTANT: mandatory for github-release upload
     steps:
 
     - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9  # @v3
@@ -49,25 +45,15 @@ jobs:
         nix build '.#${{ inputs.attribute }}.${{ matrix.version }}.debug' -o ./result
         cp ./result/* ./dist/
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # @v4
-      with:
-        name: ${{ inputs.os }}_${{ inputs.attribute }}_${{ matrix.version }}_lldb
-        retention-days: 90
-        path: ./dist/*
-
-    - name: Upload to GitHub Release
+    - name: Upload to draft GitHub Release
       if: github.ref_type == 'tag'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
+        draft: true  # keep mutable so all arches (incl. manual top-ups) can be added before publish
         name: "LLDB Release ${{ github.ref_name }}"
         body: "Automatically built packages for ${{ github.ref_name }}"
         prerelease: ${{ contains(github.ref_name, 'dev') }}
         files: |
           dist/*.whl
           dist/*.debug.tar.xz
-
-    - name: Publish package distributions to PyPI
-      if: github.ref_type == 'tag'
-      run: |
-        nix run nixpkgs#uv -- tool run twine upload dist/*.whl
