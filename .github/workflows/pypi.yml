@@ -45,6 +45,13 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Publish wheels to PyPI
         run: |
+          # PyPI rejects platform tags it doesn't recognize yet (400 Bad Request).
+          # These wheels stay on the GitHub release for manual install, but are
+          # excluded from the PyPI upload. Extend the list if another arch 400s.
+          PYPI_UNSUPPORTED=(loongarch64)
+          for tag in "${PYPI_UNSUPPORTED[@]}"; do
+            rm -f dist/*"$tag"*.whl
+          done
           nix run nixpkgs#uv -- tool run twine upload --skip-existing dist/*.whl
 
   determine-build-type:
