@@ -214,6 +214,10 @@ stdenvOver.mkDerivation (finalAttrs: {
   dontStrip = true;
   doCheck = false;
 
+  postInstall = lib.optionalString stdenv.targetPlatform.isDarwin ''
+    find $out/bin/ -type f -exec dsymutil {} \;
+  '';
+
 #  postInstall = ''
 #    cd gdb
 #
