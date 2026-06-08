@@ -118,6 +118,8 @@ let
                 ${gdb_drv.python}/lib/libpython${gdb_drv.pythonVersion}.dylib \
                 '@executable_path/../../../../../../lib/libpython${gdb_drv.pythonVersion}.dylib' \
                 ./src/gdb_for_pwndbg/_vendor/bin/gdb
+
+            cp -rf $GDB_DIR/bin/gdb.dSYM ./src/gdb_for_pwndbg/_vendor/gdb.dSYM
         fi
 
         if [ "$BUILD_DEBUG_TARBALL" -eq 1 ]; then
@@ -128,6 +130,7 @@ let
             --transform="s|^./|./$WHEEL_OUT_NAME/|" \
             .
         fi
+        find ./src/ -name "*.dSYM" -type d -prune -exec rm -rf {} +
 
         llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdb
         nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdb
