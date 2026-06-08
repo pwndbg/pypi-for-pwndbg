@@ -129,11 +129,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     [
       "-L${libiconv-static}/lib"
     ]
-    ++ lib.optionals stdenv.targetPlatform.isDarwin [
-      # Force static linking libc++ on Darwin, see: https://github.com/llvm/llvm-project/issues/76945#issuecomment-2002557889
-      "-nostdlib++"
-      "-Wl,${libcxx}/lib/libc++.a,${libcxx}/lib/libc++abi.a"
-    ]
     ++ lib.optionals stdenv.targetPlatform.isPower64 [
       "-L${libclang_rt_ppc_builtins}/lib"
       "-lclang_rt_ppc_builtins"

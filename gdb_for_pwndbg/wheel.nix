@@ -120,6 +120,7 @@ let
                 ./src/gdb_for_pwndbg/_vendor/bin/gdb
 
             cp -rf $GDB_DIR/bin/gdb.dSYM ./src/gdb_for_pwndbg/_vendor/gdb.dSYM
+            chmod -R +w ./src/
         fi
 
         if [ "$BUILD_DEBUG_TARBALL" -eq 1 ]; then

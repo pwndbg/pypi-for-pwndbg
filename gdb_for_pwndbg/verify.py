@@ -165,10 +165,12 @@ allowlist_dependencies = {
     "x86_64-darwin": [
         "/usr/lib/libSystem.B.dylib",
         "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/usr/lib/libc++.1.dylib",
     ],
     "aarch64-darwin": [
         "/usr/lib/libSystem.B.dylib",
         "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+        "/usr/lib/libc++.1.dylib",
     ],
 }[system]
 
