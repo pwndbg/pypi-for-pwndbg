@@ -153,6 +153,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   configureFlags = [
     "--program-prefix="
     "--disable-werror"
+    "--with-bugurl=https://github.com/pwndbg/pwndbg/issues"
 
     # Disable binutils
     "--disable-binutils"

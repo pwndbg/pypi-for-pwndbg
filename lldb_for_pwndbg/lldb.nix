@@ -127,6 +127,9 @@ stdenvOver.mkDerivation (finalAttrs: {
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
     (lib.cmakeFeature "CMAKE_BUILD_TYPE" "RelWithDebInfo")
+    # Covers both LLVM's generic crash handler message and lldb's own
+    # (LLDB_BUG_REPORT_URL defaults to BUG_REPORT_URL).
+    (lib.cmakeFeature "BUG_REPORT_URL" "https://github.com/pwndbg/pwndbg/issues")
 
     (lib.cmakeFeature "LLVM_TABLEGEN" "${tblgen}/bin/llvm-tblgen")
     (lib.cmakeFeature "CLANG_TABLEGEN" "${tblgen}/bin/clang-tblgen")
