@@ -136,6 +136,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   # https://discourse.nixos.org/t/cmakeflags-and-spaces-in-option-values/20170
   preConfigure = lib.optionalString stdenv.targetPlatform.isPower64 ''
     cmakeFlagsArray+=(-DCMAKE_EXE_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins -z lazy")
+    cmakeFlagsArray+=(-DCMAKE_SHARED_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins")
   '';
 
   cmakeFlags = [
@@ -208,6 +209,13 @@ stdenvOver.mkDerivation (finalAttrs: {
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
     (lib.cmakeBool "LLDB_USE_SYSTEM_DEBUGSERVER" true)
+
+    # lldb 23 ad-hoc signs the driver, but `xcrun codesign` does not exist in the
+    # sandbox. CMAKE_CODESIGN is the command llvm_codesign runs, not a toggle, so
+    # point it at a no-op; the identity itself cannot be cleared, as the driver's
+    # CMakeLists forces it back to "-". wheel.nix rewrites the binary afterwards
+    # anyway, which would invalidate a signature made here.
+    (lib.cmakeFeature "CMAKE_CODESIGN" "true")
 
     # Allow undefined Python symbols in liblldb.dylib so that the
     # libpython_loader shim can supply them via RTLD_GLOBAL at runtime.
