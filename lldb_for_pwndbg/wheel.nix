@@ -164,9 +164,12 @@ let
             mkdir -p ./src/lldb_for_pwndbg/_vendor/lib
             cp ${libpython_loader_lldb}/lib/libpython_loader_lldb.dylib ./src/lldb_for_pwndbg/_vendor/lib/
 
+            # liblldb's install_name carries the SOVERSION (major.minor), not the
+            # full version, so match what the binary actually references -- same
+            # name the Linux --replace-needed above uses.
             install_name_tool \
                 -change \
-                '@rpath/liblldb.${lldb_drv.version}.dylib' \
+                '@rpath/liblldb.${lldbMajorMinorVersion}.dylib' \
                 "@executable_path/../lib/libpython_loader_lldb.dylib" \
                 ./src/lldb_for_pwndbg/_vendor/bin/lldb
 
