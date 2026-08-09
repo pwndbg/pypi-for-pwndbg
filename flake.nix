@@ -87,13 +87,13 @@
           v:
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
-            version = "22.1.0";
-            pypiVersion = "22.1.0.post3";
+            version = "23.1.0";
+            pypiVersion = "23.1.0.post1";
             monorepoSrc = pkgs.fetchFromGitHub {
               owner = "llvm";
               repo = "llvm-project";
-              rev = "llvmorg-22.1.0";
-              hash = "sha256-tG0JuBfOyYCqGGS2N2zpJxhkb1CUnGtfZ5nBesQzK/A=";
+              rev = "llvmorg-23.1.0-rc2";
+              hash = "sha256-K5bAtxqUvPPJ31VXeBuyXSI/wOjuzMZ7sOXDLZ45wps=";
             };
             patches = [ ];
           }
@@ -122,6 +122,17 @@
           liblldb_stub = prev.callPackage ./liblldb_stub { };
           libpython_loader_lldb = prev.callPackage ./libpython_loader_lldb { };
           libpython_stub = prev.callPackage ./libpython_stub { };
+
+          # lldb's Python type annotations need swig >= 4.5.0 (nixpkgs ships 4.3.1).
+          swig_4_5_0 = prev.swig.overrideAttrs (old: {
+            version = "4.5.0";
+            src = prev.fetchFromGitHub {
+              owner = "swig";
+              repo = "swig";
+              rev = "v4.5.0";
+              hash = "sha256-NXN3Zx66PNpYNuFVCalHymb/GW0cUi5drjIXNOVMgb8=";
+            };
+          });
 
           zlib-static = prev.pkgsStatic.zlib;
           zstd-static = prev.pkgsStatic.zstd;

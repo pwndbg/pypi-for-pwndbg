@@ -1,0 +1,26 @@
+zig cc rejects --exclude-libs ("error: unsupported linker arg"), so drop the
+flag lldb 23 puts on every tool that links the shared liblldb.
+
+Upstream added it in llvm/llvm-project#204710: the driver links lldbHost.a and
+lldbUtility.a on top of liblldb.so, so HostInfoBase (and its file-static
+g_fields) exists twice. On ELF the executable's symbols win, so liblldb.so's
+PLT entry for GetShlibDir() could bind to the executable's never-initialized
+copy -> null g_fields -> segfault in pthread_once.
+
+That interposition needs the symbol to be re-exported, which only happens with
+LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS=ON (it flips libraries to
+CXX_VISIBILITY_PRESET=default and adds GetShlibDir to the version script).
+lldb.nix pins that option to false, so liblldb keeps hidden visibility and
+binds those references internally -- revisit this patch if it is ever enabled.
+
+diff --git a/lldb/cmake/modules/AddLLDB.cmake b/lldb/cmake/modules/AddLLDB.cmake
+--- a/lldb/cmake/modules/AddLLDB.cmake
++++ b/lldb/cmake/modules/AddLLDB.cmake
+@@ -497,7 +497,8 @@
+ function(lldb_prevent_liblldb_symbol_interposition name)
+   if(UNIX AND NOT APPLE)
+-    target_link_options(${name} PRIVATE "LINKER:--exclude-libs,ALL")
++    # zig cc cannot pass --exclude-libs; safe while
++    # LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS is OFF (see patch header).
+   endif()
+ endfunction()

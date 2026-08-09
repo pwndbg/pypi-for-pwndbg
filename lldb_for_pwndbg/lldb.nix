@@ -3,6 +3,7 @@
   stdenv,
   buildPackages,
   pkgsBuildHost,
+  fetchFromGitHub,
 
   version,
   pypiVersion,
@@ -12,7 +13,7 @@
   cmake,
   ninja,
   which,
-  swig,
+  swig_4_5_0,
 
   # buildInputs:
   libedit-static,
@@ -31,6 +32,13 @@
 }:
 let
   versionMajorMinor = lib.versions.majorMinor version;
+
+  # LLVM appends LLVM_VERSION_SUFFIX to liblldb's SOVERSION (e.g. liblldb.so.23.0git).
+  # Derive it from `version` with the same rule wheel.nix uses to compute the name it
+  # patches, so the two can't drift. Upstream defaults this to "git" on main and
+  # "-rcN" on release candidates; pinning it keeps rc builds named like a final release.
+  versionParts = builtins.splitVersion version;
+  versionSuffix = if (builtins.length versionParts) >= 4 then (builtins.elemAt versionParts 3) else "";
 
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
     inherit version monorepoSrc;
@@ -71,9 +79,6 @@ stdenvOver.mkDerivation (finalAttrs: {
   };
 
   patches = [
-    # temporary fix for: https://github.com/llvm/llvm-project/issues/183388
-    ./patches/fix-assembly-type-system.patch
-
     # temporary fix for: https://github.com/llvm/llvm-project/issues/155692
     ./patches/fix-apple-memory-mapping.patch
     ./patches/enable-debuginfod.patch
@@ -84,6 +89,15 @@ stdenvOver.mkDerivation (finalAttrs: {
 
     # todo: upstream changes?
     ./patches/lldb-fix-cross-python.patch
+
+    # zig cc rejects --exclude-libs; safe while
+    # LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS is off (details in the patch).
+    ./patches/lldb-no-exclude-libs.patch
+
+    # Type annotations for the Python bindings (llvm-project c783125).
+    # Guarded by `#if SWIG_VERSION >= 0x040500`, so it is a no-op until
+    # nixpkgs ships swig >= 4.5.0 (currently 4.3.1).
+    ./patches/lldb-python-type-annotations.patch
   ]
   ++ patches;
 
@@ -100,7 +114,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   nativeBuildInputs = [
     cmake
     which
-    swig
+    swig_4_5_0
     ninja
     pkg-config
   ];
@@ -127,6 +141,7 @@ stdenvOver.mkDerivation (finalAttrs: {
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
     (lib.cmakeFeature "CMAKE_BUILD_TYPE" "RelWithDebInfo")
+    (lib.cmakeFeature "LLVM_VERSION_SUFFIX" versionSuffix)
     # Covers both LLVM's generic crash handler message and lldb's own
     # (LLDB_BUG_REPORT_URL defaults to BUG_REPORT_URL).
     (lib.cmakeFeature "BUG_REPORT_URL" "https://github.com/pwndbg/pwndbg/issues")
@@ -181,6 +196,8 @@ stdenvOver.mkDerivation (finalAttrs: {
     # FORCE_ON makes cmake error out if curl is not found (vs silently disabling it).
     (lib.cmakeFeature "LLVM_ENABLE_CURL" "FORCE_ON")
 
+    (lib.cmakeBool "LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS" false)
+    (lib.cmakeFeature "LLDB_PYTHON_RUNTIME_LIBRARY_BUILD_PATH" "")
     (lib.cmakeFeature "Python3_EXECUTABLE" "${python3.pythonOnBuildForHost.interpreter}")
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
     (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")

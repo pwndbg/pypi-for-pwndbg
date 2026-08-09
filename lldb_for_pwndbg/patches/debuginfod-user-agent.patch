@@ -1,7 +1,7 @@
-diff --git a/llvm/lib/Debuginfod/HTTPClient.cpp b/llvm/lib/Debuginfod/HTTPClient.cpp
---- a/llvm/lib/Debuginfod/HTTPClient.cpp
-+++ b/llvm/lib/Debuginfod/HTTPClient.cpp
-@@ -20,6 +20,9 @@
+diff --git a/llvm/lib/HTTP/HTTPClient.cpp b/llvm/lib/HTTP/HTTPClient.cpp
+--- a/llvm/lib/HTTP/HTTPClient.cpp
++++ b/llvm/lib/HTTP/HTTPClient.cpp
+@@ -22,6 +22,9 @@
  #include "llvm/Support/MemoryBuffer.h"
  #ifdef LLVM_ENABLE_CURL
  #include <curl/curl.h>
@@ -9,12 +9,14 @@ diff --git a/llvm/lib/Debuginfod/HTTPClient.cpp b/llvm/lib/Debuginfod/HTTPClient
 +#include "llvm/Config/llvm-config.h"
 +#include <sys/utsname.h>
  #endif
-
- using namespace llvm;
-@@ -88,6 +91,72 @@
+ #ifdef _WIN32
+ #include "llvm/Support/ConvertUTF.h"
+@@ -92,6 +95,72 @@
+     return 0;
+   }
    return Size;
- }
-
++}
++
 +static std::string buildUserAgent() {
 +  std::string UA = "debuginfod-llvm/" LLVM_VERSION_STRING;
 +  struct utsname UTS;
@@ -79,18 +81,16 @@ diff --git a/llvm/lib/Debuginfod/HTTPClient.cpp b/llvm/lib/Debuginfod/HTTPClient
 +  }
 +#endif
 +  return UA;
-+}
-+
- HTTPClient::HTTPClient() {
-   assert(IsInitialized &&
-          "Must call HTTPClient::initialize() at the beginning of main().");
-@@ -99,6 +168,9 @@
-   curl_easy_setopt(Curl, CURLOPT_WRITEFUNCTION, curlWriteFunction);
-   // Detect supported compressed encodings and accept all.
-   curl_easy_setopt(Curl, CURLOPT_ACCEPT_ENCODING, "");
-+  // Identify ourselves to debuginfod servers (e.g. "debuginfod-llvm/21.1.7,Linux/x86_64,ubuntu/22.04").
-+  static const std::string UserAgent = buildUserAgent();
-+  curl_easy_setopt(Curl, CURLOPT_USERAGENT, UserAgent.c_str());
  }
-
- HTTPClient::~HTTPClient() { curl_easy_cleanup(Curl); }
+ 
+ HTTPClient::HTTPClient() {
+@@ -105,6 +174,9 @@
+   curl_easy_setopt(Handle, CURLOPT_WRITEFUNCTION, curlWriteFunction);
+   // Detect supported compressed encodings and accept all.
+   curl_easy_setopt(Handle, CURLOPT_ACCEPT_ENCODING, "");
++  // Identify ourselves to debuginfod servers (e.g. "debuginfod-llvm/23.1.0,Linux/x86_64,ubuntu/22.04").
++  static const std::string UserAgent = buildUserAgent();
++  curl_easy_setopt(Handle, CURLOPT_USERAGENT, UserAgent.c_str());
+ }
+ 
+ HTTPClient::~HTTPClient() { curl_easy_cleanup(Handle); }
