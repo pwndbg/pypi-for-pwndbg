@@ -94,6 +94,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     # LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS is off (details in the patch).
     ./patches/lldb-no-exclude-libs.patch
 
+    # Let `expr` reach thread-local variables that only exist in the ELF
+    # symbol table, e.g. glibc's `tcache` without debug info.
+    ./patches/lldb-tls-symtab-variables.patch
+
     # Type annotations for the Python bindings (llvm-project c783125).
     # Guarded by `#if SWIG_VERSION >= 0x040500`, so it is a no-op until
     # nixpkgs ships swig >= 4.5.0 (currently 4.3.1).
