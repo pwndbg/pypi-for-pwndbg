@@ -88,12 +88,12 @@
           pkgs.callPackage ./lldb_for_pwndbg/lldb.nix {
             python3 = pkgs."python${v}";
             version = "23.1.0";
-            pypiVersion = "23.1.0.post1";
+            pypiVersion = "23.1.0.post2";
             monorepoSrc = pkgs.fetchFromGitHub {
               owner = "llvm";
               repo = "llvm-project";
-              rev = "llvmorg-23.1.0-rc2";
-              hash = "sha256-K5bAtxqUvPPJ31VXeBuyXSI/wOjuzMZ7sOXDLZ45wps=";
+              rev = "llvmorg-23.1.0";
+              hash = "sha256-Astfi1UDDcydyws3Q1sELqho/PxiNN/tvCtmCGj5FoE=";
             };
             patches = [ ];
           }
