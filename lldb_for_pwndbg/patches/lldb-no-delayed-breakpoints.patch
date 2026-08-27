@@ -1,0 +1,31 @@
+Default target.process.use-delayed-breakpoints to false.
+
+Upstream defaults this to true, which lets lldb defer writing breakpoint
+changes into the inferior until the process is about to resume. That is a
+throughput optimisation: a script that sets or clears many breakpoints between
+stops only pays for one round of updates.
+
+The cost is that between stops the inferior does not yet reflect what the
+breakpoint list says. Anything that reads target memory directly -- rather than
+going through the breakpoint APIs -- sees the old bytes, so a freshly set
+breakpoint is invisible until the next resume.
+
+Turning the default off trades that throughput for breakpoints taking effect
+as soon as they are set.
+
+Downstream policy change, not upstream material: the upstream default is a
+deliberate choice and flipping it globally would regress the case it was
+added for.
+
+diff --git a/lldb/source/Target/TargetProperties.td b/lldb/source/Target/TargetProperties.td
+--- a/lldb/source/Target/TargetProperties.td
++++ b/lldb/source/Target/TargetProperties.td
+@@ -320,7 +320,7 @@
+              "threads are suspended during single-stepping operations.">;
+   def UseDelayedBreakpoints
+       : Property<"use-delayed-breakpoints", "Boolean">,
+-        DefaultTrue,
++        DefaultFalse,
+         Desc<"Specify whether updating breakpoints may be delayed until the "
+              "process is about to resume.">;
+ }

@@ -102,6 +102,10 @@ stdenvOver.mkDerivation (finalAttrs: {
     # Guarded by `#if SWIG_VERSION >= 0x040500`, so it is a no-op until
     # nixpkgs ships swig >= 4.5.0 (currently 4.3.1).
     ./patches/lldb-python-type-annotations.patch
+
+    # Breakpoints take effect when set, not when the process next resumes.
+    # see: https://github.com/llvm/llvm-project/issues/216000
+    ./patches/lldb-no-delayed-breakpoints.patch
   ]
   ++ patches;
 
