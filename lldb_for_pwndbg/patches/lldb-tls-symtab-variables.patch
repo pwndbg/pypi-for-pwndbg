@@ -1,13 +1,12 @@
-Resolve thread-local variables found through the ELF symbol table.
+Resolve thread-local variables found through the symbol table.
 
 `expr <tls_var>` works when the variable has debug info: DWARF gives it a
 DW_OP_form_tls_address location, which DWARFExpression resolves through
 Thread::GetThreadLocalData(). With no debug info the variable is only found
-in the symbol table, and there ObjectFileELF lowers STT_TLS to
-eSymbolTypeData and drops the TLS-ness -- lldb has neither an eSymbolTypeTLS
-nor a TLS flag on Symbol. st_value of an STT_TLS symbol is an offset inside
-the module's TLS block, so treating it as an address hands the expression a
-bogus pointer:
+in the symbol table, and there the TLS-ness is lost: ObjectFileELF lowers
+STT_TLS to eSymbolTypeData, and lldb has neither an eSymbolTypeTLS nor a TLS
+flag on Symbol. An STT_TLS symbol's st_value is an offset inside the module's
+TLS block, so treating it as an address hands the expression a bogus pointer:
 
     (lldb) p &tls_gd
     (void **) 0x000000000000000c        <- st_value, not an address
@@ -15,12 +14,15 @@ bogus pointer:
     error: Couldn't apply expression side effects : Couldn't dematerialize a
            result variable: couldn't read its memory
 
-Add Thread::GetThreadLocalSymbolAddress(), which recovers the ELF symbol type
-from Symbol::GetFlags() -- ObjectFileELF packs `st_other << 8 | st_info`
-there, so the low four bits are the symbol type -- and feeds the file address
-to GetThreadLocalData(), the same value the DWARF path pushes. Sitting on
-Thread keeps it next to GetThreadLocalData() and avoids duplicating the ELF
-detail across callers.
+Add ObjectFile::IsThreadLocalSymbol(), defaulting to false and overridden by
+ObjectFileELF, which is the only place that knows STT_TLS. Symbol::GetFlags()
+is documented as being for the producing plug-in to interpret, so the ELF
+detail stays there rather than leaking into generic code.
+
+Thread::GetThreadLocalSymbolAddress() then asks the object file and, for a
+thread-local symbol, feeds the file address to GetThreadLocalData() -- the
+same value the DWARF path pushes. It sits on Thread next to
+GetThreadLocalData() so the callers below share one entry point.
 
 Use it where such a symbol is turned into an address:
 
@@ -41,6 +43,31 @@ Not architecture-specific: this reproduces identically on x86-64 and aarch64,
 and is unrelated to LLDB_REGNUM_GENERIC_TP -- the thread pointer itself reads
 back fine.
 
+diff --git a/lldb/include/lldb/Symbol/ObjectFile.h b/lldb/include/lldb/Symbol/ObjectFile.h
+--- a/lldb/include/lldb/Symbol/ObjectFile.h
++++ b/lldb/include/lldb/Symbol/ObjectFile.h
+@@ -333,6 +333,21 @@
+   ///     The symbol table to populate.
+   virtual void ParseSymtab(Symtab &symtab) = 0;
+ 
++  /// Whether a symbol refers to thread-local storage.
++  ///
++  /// Only the plug-in that parsed the symbol table can answer this: the
++  /// generic symbol type does not distinguish thread-local data from ordinary
++  /// data, and Symbol::GetFlags() is defined to be interpreted by the plug-in
++  /// that produced it.
++  ///
++  /// \param[in] symbol
++  ///     A symbol from this object file's symbol table.
++  ///
++  /// \return
++  ///     True if \a symbol is thread-local, false otherwise or when the
++  ///     format has no notion of thread-local symbols.
++  virtual bool IsThreadLocalSymbol(const Symbol &symbol) const { return false; }
++
+   /// Perform relocations on the section if necessary.
+   ///
+   virtual void RelocateSection(lldb_private::Section *section);
 diff --git a/lldb/include/lldb/Target/Thread.h b/lldb/include/lldb/Target/Thread.h
 --- a/lldb/include/lldb/Target/Thread.h
 +++ b/lldb/include/lldb/Target/Thread.h
@@ -51,19 +78,19 @@ diff --git a/lldb/include/lldb/Target/Thread.h b/lldb/include/lldb/Target/Thread
 +  /// Resolve a thread-local symbol to an address in this thread's TLS block.
 +  ///
 +  /// Thread-local variables that carry debug info are located through a
-+  /// DW_OP_form_tls_address expression, but ones found only in the ELF symbol
-+  /// table have no such location: ObjectFileELF lowers STT_TLS to
-+  /// eSymbolTypeData, and st_value is an offset inside the module's TLS block
-+  /// rather than an address. Callers that turn a symbol into an address use
-+  /// this to handle that case instead of loading the offset directly.
++  /// DW_OP_form_tls_address expression, but ones found only in the symbol
++  /// table have no such location, and their symbol value is an offset inside
++  /// the module's TLS block rather than an address. Callers that turn a symbol
++  /// into an address use this to handle that case instead of loading the
++  /// offset directly.
 +  ///
 +  /// \param[in] symbol
 +  ///     The symbol to resolve.
 +  ///
 +  /// \return
 +  ///     The address of the variable in this thread's TLS block, or
-+  ///     LLDB_INVALID_ADDRESS if \a symbol is not an ELF thread-local symbol
-+  ///     or the block could not be located.
++  ///     LLDB_INVALID_ADDRESS if \a symbol is not thread-local or the block
++  ///     could not be located.
 +  lldb::addr_t GetThreadLocalSymbolAddress(const Symbol &symbol);
 +
    /// Check whether this thread is safe to run functions
@@ -79,8 +106,8 @@ diff --git a/lldb/source/Expression/Materializer.cpp b/lldb/source/Expression/Ma
 -    lldb::addr_t resolved_address = sym_address.GetLoadAddress(target_sp.get());
 +    lldb::addr_t resolved_address = LLDB_INVALID_ADDRESS;
 +
-+    // A thread-local symbol's address is an offset into the TLS block, so it
-+    // has to be resolved against a thread rather than loaded directly.
++    // A thread-local symbol's value is an offset into the TLS block, so it has
++    // to be resolved against a thread rather than loaded directly.
 +    if (lldb::ThreadSP thread_sp =
 +            frame_sp ? frame_sp->GetThread() : lldb::ThreadSP())
 +      resolved_address = thread_sp->GetThreadLocalSymbolAddress(m_symbol);
@@ -97,8 +124,8 @@ diff --git a/lldb/source/Plugins/ExpressionParser/Clang/ClangExpressionDeclMap.c
      if (!sym_address.IsValid())
        continue;
  
-+    // A thread-local symbol's address is an offset into the TLS block, so it
-+    // has to be resolved against a thread rather than loaded directly.
++    // A thread-local symbol's value is an offset into the TLS block, so it has
++    // to be resolved against a thread rather than loaded directly.
 +    if (process) {
 +      if (lldb::ThreadSP thread_sp =
 +              process->GetThreadList().GetSelectedThread()) {
@@ -114,52 +141,60 @@ diff --git a/lldb/source/Plugins/ExpressionParser/Clang/ClangExpressionDeclMap.c
      switch (sym_ctx.symbol->GetType()) {
      case eSymbolTypeCode:
      case eSymbolTypeTrampoline:
+diff --git a/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.cpp b/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.cpp
+--- a/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.cpp
++++ b/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.cpp
+@@ -3467,6 +3467,12 @@
+     symbol_table->AddSymbol(s);
+ }
+ 
++bool ObjectFileELF::IsThreadLocalSymbol(const Symbol &symbol) const {
++  // ParseSymtab() packs `st_other << 8 | st_info` into the symbol flags, so
++  // the low four bits hold the ELF symbol type, as ELFSymbol::getType() does.
++  return (symbol.GetFlags() & 0x0f) == STT_TLS;
++}
++
+ bool ObjectFileELF::IsStripped() {
+   // TODO: determine this for ELF
+   return false;
+diff --git a/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.h b/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.h
+--- a/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.h
++++ b/lldb/source/Plugins/ObjectFile/ELF/ObjectFileELF.h
+@@ -112,6 +112,8 @@
+ 
+   void ParseSymtab(lldb_private::Symtab &symtab) override;
+ 
++  bool IsThreadLocalSymbol(const lldb_private::Symbol &symbol) const override;
++
+   bool IsStripped() override;
+ 
+   void CreateSections(lldb_private::SectionList &unified_section_list) override;
 diff --git a/lldb/source/Target/Thread.cpp b/lldb/source/Target/Thread.cpp
 --- a/lldb/source/Target/Thread.cpp
 +++ b/lldb/source/Target/Thread.cpp
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,8 @@
  #include "lldb/Core/FormatEntity.h"
  #include "lldb/Core/Module.h"
  #include "lldb/Core/StructuredDataImpl.h"
++#include "lldb/Symbol/ObjectFile.h"
 +#include "lldb/Symbol/Symbol.h"
  #include "lldb/Host/Host.h"
  #include "lldb/Interpreter/Interfaces/ScriptedFrameInterface.h"
  #include "lldb/Interpreter/Interfaces/ScriptedFrameProviderInterface.h"
-@@ -2016,6 +2017,43 @@
+@@ -2016,6 +2018,22 @@
                                        tls_file_addr);
    else
      return LLDB_INVALID_ADDRESS;
 +}
 +
-+/// True if \a symbol is an ELF thread-local (STT_TLS) symbol.
-+///
-+/// ObjectFileELF lowers STT_TLS to eSymbolTypeData, so the symbol type alone
-+/// cannot tell thread-local data apart from ordinary data. It does keep the
-+/// ELF st_info in the symbol flags (packed as `st_other << 8 | st_info`), so
-+/// the ELF symbol type survives in the low four bits.
-+static bool IsELFThreadLocalSymbol(const Symbol &symbol) {
-+  const uint32_t elf_st_type_mask = 0xf;
-+  const uint32_t elf_stt_tls = 6; // STT_TLS
-+
-+  ModuleSP module_sp = symbol.GetAddress().GetModule();
-+  if (!module_sp)
-+    return false;
-+
-+  // Symbol flags only hold st_info for ELF; other object file formats use
-+  // them differently, so do not read TLS-ness out of them there.
-+  if (!module_sp->GetArchitecture().GetTriple().isOSBinFormatELF())
-+    return false;
-+
-+  return (symbol.GetFlags() & elf_st_type_mask) == elf_stt_tls;
-+}
-+
 +addr_t Thread::GetThreadLocalSymbolAddress(const Symbol &symbol) {
-+  if (!IsELFThreadLocalSymbol(symbol))
-+    return LLDB_INVALID_ADDRESS;
-+
 +  const Address symbol_address = symbol.GetAddress();
 +  ModuleSP module_sp = symbol_address.GetModule();
 +  if (!module_sp)
++    return LLDB_INVALID_ADDRESS;
++
++  ObjectFile *object_file = module_sp->GetObjectFile();
++  if (!object_file || !object_file->IsThreadLocalSymbol(symbol))
 +    return LLDB_INVALID_ADDRESS;
 +
 +  // GetThreadLocalData() takes the same value DW_OP_form_tls_address would
