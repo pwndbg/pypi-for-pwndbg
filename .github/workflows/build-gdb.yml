@@ -54,10 +54,10 @@ jobs:
         nix build '.#${{ inputs.attribute }}.314.debug' -o ./result
         cp ./result/* ./dist/
 
-#    - name: build 315
-#      run: |
-#        nix build '.#${{ inputs.attribute }}.315.debug' -o ./result
-#        cp ./result/* ./dist/
+    - name: build 315
+      run: |
+        nix build '.#${{ inputs.attribute }}.315.debug' -o ./result
+        cp ./result/* ./dist/
 
     - name: Upload to draft GitHub Release
       if: github.ref_type == 'tag'

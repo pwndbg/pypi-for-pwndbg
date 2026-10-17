@@ -48,11 +48,11 @@
           v:
           pkgs.callPackage ./gdb_for_pwndbg/gdb.nix {
             python3 = pkgs."python${v}";
-            version = "17.2";
-            pypiVersion = "17.2.0.post5";
+            version = "18.1";
+            pypiVersion = "18.1.0.post1";
             src = pkgs.fetchurl {
-              url = "mirror://gnu/gdb/gdb-17.2.tar.xz";
-              hash = "sha256-HANsDXLks9H7XJTIhjKt1vnXb018TS6nk8EqnxmjIow=";
+              url = "mirror://gnu/gdb/gdb-18.1.tar.xz";
+              hash = "sha256-zZ/D/itHdDhA5CwVktPYf4MC6xhjnAuLS6CJgALiNI8=";
             };
           }
         ));
@@ -122,6 +122,18 @@
           liblldb_stub = prev.callPackage ./liblldb_stub { };
           libpython_loader_lldb = prev.callPackage ./libpython_loader_lldb { };
           libpython_stub = prev.callPackage ./libpython_stub { };
+
+          # nixos-25.11 only ships python315 as 3.15.0a6 (before the ABI freeze); use the final release.
+          python315 = prev.python315.override {
+            self = final.__splicedPackages.python315;
+            sourceVersion = {
+              major = "3";
+              minor = "15";
+              patch = "0";
+              suffix = "";
+            };
+            hash = "sha256-ukvtG6NGuRaJC3bZ4yBFFCCqafZAiZfTPGZILurj1XU=";
+          };
 
           # lldb's Python type annotations need swig >= 4.5.0 (nixpkgs ships 4.3.1).
           swig_4_5_0 = prev.swig.overrideAttrs (old: {
@@ -363,16 +375,16 @@
             in
             if prev.stdenv.targetPlatform.isLinux then pkgLinux else pkgDarwin;
 
-          gdb-for-pwndbg = fun_gdb prev;
+          gdb-for-pwndbg = fun_gdb final;
           wheel-gdb-for-pwndbg = fun_gdb_wheel final "gdb-for-pwndbg";
 
-          gdb_dev-for-pwndbg = fun_gdb_dev prev;
+          gdb_dev-for-pwndbg = fun_gdb_dev final;
           wheel-gdb_dev-for-pwndbg = fun_gdb_wheel final "gdb_dev-for-pwndbg";
 
-          lldb-for-pwndbg = fun_lldb prev;
+          lldb-for-pwndbg = fun_lldb final;
           wheel-lldb-for-pwndbg = fun_lldb_wheel final "lldb-for-pwndbg";
 
-          lldb_dev-for-pwndbg = fun_lldb_dev prev;
+          lldb_dev-for-pwndbg = fun_lldb_dev final;
           wheel-lldb_dev-for-pwndbg = fun_lldb_wheel final "lldb_dev-for-pwndbg";
         }
       );
