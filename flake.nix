@@ -124,16 +124,26 @@
           libpython_stub = prev.callPackage ./libpython_stub { };
 
           # nixos-25.11 only ships python315 as 3.15.0a6 (before the ABI freeze); use the final release.
-          python315 = prev.python315.override {
-            self = final.__splicedPackages.python315;
-            sourceVersion = {
-              major = "3";
-              minor = "15";
-              patch = "0";
-              suffix = "";
-            };
-            hash = "sha256-ukvtG6NGuRaJC3bZ4yBFFCCqafZAiZfTPGZILurj1XU=";
-          };
+          python315 =
+            (prev.python315.override {
+              self = final.__splicedPackages.python315;
+              sourceVersion = {
+                major = "3";
+                minor = "15";
+                patch = "0";
+                suffix = "";
+              };
+              hash = "sha256-ukvtG6NGuRaJC3bZ4yBFFCCqafZAiZfTPGZILurj1XU=";
+            }).overrideAttrs
+              (
+                old:
+                # 3.15 dropped configure's `RUNSHARED=` reset for cross builds (3.14 still has it), so the
+                # build python runs with LD_LIBRARY_PATH pointing at the target libpython. glibc skips a
+                # foreign-arch lib, but a foreign byte order is fatal: s390x fails in `checksharedmods`.
+                lib.optionalAttrs (prev.stdenv.hostPlatform != prev.stdenv.buildPlatform) {
+                  makeFlags = (old.makeFlags or [ ]) ++ [ "RUNSHARED=" ];
+                }
+              );
 
           # lldb's Python type annotations need swig >= 4.5.0 (nixpkgs ships 4.3.1).
           swig_4_5_0 = prev.swig.overrideAttrs (old: {
