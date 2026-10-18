@@ -12,7 +12,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    debuginfod-zig.url = "github:pwndbg/debuginfod-zig";
+    debuginfod-zig.url = "github:pwndbg/debuginfod-zig/v1.0.0";
   };
 
   outputs =
