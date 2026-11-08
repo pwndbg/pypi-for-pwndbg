@@ -50,6 +50,11 @@ let
       "-target"
       target
     ];
+    extraBuildCommands = lib.optionalString targetPlatform.isLoongArch64 ''
+      substituteInPlace $out/nix-support/cc-cflags-before \
+        --replace-quiet -mno-strict-align "" \
+        --replace-quiet -mstrict-align ""
+    '';
   };
 in
 {
