@@ -48,6 +48,7 @@
           v:
           pkgs.callPackage ./gdb_for_pwndbg/wheel.nix {
             gdb_drv = pkgs.${name}.${v};
+            patchelf = pkgs.buildPackages.patchelf_0_19_3;
           }
         ));
       fun_gdb =
@@ -86,6 +87,7 @@
           v:
           pkgs.callPackage ./lldb_for_pwndbg/wheel.nix {
             lldb_drv = pkgs.${name}.${v};
+            patchelf = pkgs.buildPackages.patchelf_0_19_3;
           }
         ));
 
@@ -232,6 +234,25 @@
               makeFlags = (old.makeFlags or [ ]) ++ [ "RUNSHARED=" ];
             }
           );
+
+          # For the wheels. patchelf >= 0.18 (still in 0.19.3 and master) builds the extra LOAD in
+          # shiftFile() from the split segment's raw p_offset/p_paddr/p_vaddr, without rdi(): on a
+          # foreign-endian file (s390x on aarch64/x86_64) it gets a garbage offset and llvm-strip
+          # fails with "program header with offset 0xf0e920ffffde1610 ... goes past the end".
+          # Upstream: https://github.com/NixOS/patchelf/issues/680
+          patchelf_0_19_3 = prev.patchelf.overrideAttrs (old: {
+            version = "0.19.3";
+            src = prev.fetchurl {
+              url = "https://github.com/NixOS/patchelf/releases/download/0.19.3/patchelf-0.19.3.tar.bz2";
+              hash = "sha256-INviPp28StdpB4qGetACwEKXoGn/k8lftyJC3VXU3W8=";
+            };
+            postPatch = (old.postPatch or "") + ''
+              substituteInPlace src/patchelf.cc \
+                --replace-fail 'phdrs.at(splitIndex).p_offset - ' 'rdi(phdrs.at(splitIndex).p_offset) - ' \
+                --replace-fail 'phdrs.at(splitIndex).p_paddr - ' 'rdi(phdrs.at(splitIndex).p_paddr) - ' \
+                --replace-fail 'phdrs.at(splitIndex).p_vaddr - ' 'rdi(phdrs.at(splitIndex).p_vaddr) - '
+            '';
+          });
 
           # lldb's Python type annotations need swig >= 4.5.0 (nixpkgs ships 4.3.1).
           swig_4_5_0 = prev.swig.overrideAttrs (old: {
