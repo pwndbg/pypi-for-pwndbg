@@ -96,9 +96,16 @@ def main():
 
     envs = os.environ.copy()
     envs['PYTHONLOADER_LIBPYTHON'] = str(py_libpath)
-    envs['PYTHONNOUSERSITE'] = '1'
-    envs['PYTHONPATH'] = ':'.join(sys.path)
-    envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
+
+    if sys.version_info >= (3, 11):
+        envs.setdefault("PYTHONNOUSERSITE", "1")
+        # Read (and unset) by CPython >= 3.11 on every platform: lldb's Python finds our venv
+        envs["__PYVENV_LAUNCHER__"] = sys.executable
+    else:
+        # 3.10 only honours __PYVENV_LAUNCHER__ in macOS framework builds
+        envs.setdefault("PYTHONNOUSERSITE", "1")
+        envs['PYTHONPATH'] = ':'.join(sys.path)
+        envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 
     if sys.platform == "linux" and "LLDB_DEBUGSERVER_PATH" not in envs:
         envs["LLDB_DEBUGSERVER_PATH"] = str(lldb_server_path)

@@ -103,9 +103,15 @@ def main():
     check_lib_python()
 
     envs = os.environ.copy()
-    envs['PYTHONNOUSERSITE'] = '1'
-    envs['PYTHONPATH'] = ':'.join(sys.path)
-    envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
+    if sys.version_info >= (3, 11):
+        envs.setdefault("PYTHONNOUSERSITE", "1")
+        # Read (and unset) by CPython >= 3.11 on every platform: gdb's Python finds our venv
+        envs["__PYVENV_LAUNCHER__"] = sys.executable
+    else:
+        # 3.10 only honours __PYVENV_LAUNCHER__ in macOS framework builds
+        envs.setdefault("PYTHONNOUSERSITE", "1")
+        envs['PYTHONPATH'] = ':'.join(sys.path)
+        envs['PYTHONHOME'] = ':'.join([sys.prefix, sys.exec_prefix])
 
     sys.argv.insert(1, str(data_path))
     sys.argv.insert(1, "--data-directory")
