@@ -89,9 +89,7 @@ portableStdenv.mkDerivation (finalAttrs: {
     zlib-static
     zstd-static
     xz-static
-    (libdebuginfod-zig-static.overrideAttrs (old: {
-      postInstall = "";
-    }))
+    libdebuginfod-zig-static
 
     python3
   ];
