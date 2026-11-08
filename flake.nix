@@ -16,6 +16,8 @@
     zig-overlay.url = "github:mitchellh/zig-overlay";
     # only for python310, dropped in nixpkgs 26.05 (25.11 has no .tar.zst; it's its last release)
     nixpkgs-python310.url = "https://channels.nixos.org/nixos-25.11/nixexprs.tar.xz";
+    # nixpkgs 26.11 dropped x86_64-darwin; 26.05 still supports it
+    nixpkgs-x86_64-darwin.url = "https://channels.nixos.org/nixpkgs-26.05-darwin/nixexprs.tar.zst";
   };
 
   outputs =
@@ -25,10 +27,14 @@
       debuginfod-zig,
       zig-overlay,
       nixpkgs-python310,
+      nixpkgs-x86_64-darwin,
       ...
     }:
     let
-      forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
+      forAllSystems = nixpkgs.lib.genAttrs (
+        lib.unique (nixpkgs.lib.systems.flakeExposed ++ [ "x86_64-darwin" ])
+      );
+      nixpkgsFor = system: if system == "x86_64-darwin" then nixpkgs-x86_64-darwin else nixpkgs;
       lib = nixpkgs.lib;
       pythonVersions = [
         "310"
@@ -182,10 +188,15 @@
           # foreign-arch lib, but a foreign byte order is fatal: s390x fails in `checksharedmods`.
           # Upstream: https://github.com/python/cpython/issues/160924 (fix: PR #161321).
           # nixpkgs 26.05 dropped python310: take it from 25.11, for the same build/host platforms.
+          # Platforms are passed as plain descriptions (like pkgsCross does): 25.11 can't take
+          # platforms elaborated by a newer nixpkgs (comparing them loops forever).
           python310 =
+            let
+              plain = p: { inherit (p) config; } // lib.optionalAttrs (p ? gcc) { inherit (p) gcc; };
+            in
             prev.python310 or (import nixpkgs-python310 {
-              localSystem = prev.stdenv.buildPlatform;
-              crossSystem = prev.stdenv.hostPlatform;
+              localSystem = plain prev.stdenv.buildPlatform;
+              crossSystem = plain prev.stdenv.hostPlatform;
             }).python310;
 
           python315 = prev.python315.overrideAttrs (
@@ -323,7 +334,6 @@
                 ldapSupport = false;
                 idnSupport = false;
                 pslSupport = false;
-                rtmpSupport = false;
                 scpSupport = false;
               };
               propagatedBuildInputs = [
@@ -362,7 +372,7 @@
 
       fun_pkgs =
         system:
-        import nixpkgs {
+        import (nixpkgsFor system) {
           inherit system;
           overlays = [
             overlay_flat
@@ -397,6 +407,6 @@
           libpython_stub = pkgs.libpython_stub;
         }
       );
-      formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);
+      formatter = forAllSystems (system: (nixpkgsFor system).legacyPackages.${system}.nixfmt-tree);
     };
 }

@@ -92,6 +92,19 @@
         "url": "https://channels.nixos.org/nixpkgs-26.05-darwin/nixexprs.tar.zst"
       }
     },
+    "nixpkgs-x86_64-darwin_2": {
+      "locked": {
+        "lastModified": 1793976852,
+        "narHash": "sha256-M+MxnhCLmLbyVq9Ool2Q2FSqrLQyxT4B6oPRl+nYwIE=",
+        "rev": "57f1c8965649ce5bcac5118a0d2e41f1fbdc56e5",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixpkgs/26.05-darwin/nixpkgs-darwin-26.05pre1018012.57f1c8965649/nixexprs.tar.zst"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixpkgs-26.05-darwin/nixexprs.tar.zst"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1771043024,
@@ -142,6 +155,7 @@
         "debuginfod-zig": "debuginfod-zig",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-python310": "nixpkgs-python310",
+        "nixpkgs-x86_64-darwin": "nixpkgs-x86_64-darwin_2",
         "zig-overlay": "zig-overlay"
       }
     },
