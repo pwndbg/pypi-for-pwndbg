@@ -66,19 +66,6 @@
         "url": "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst"
       }
     },
-    "nixpkgs-python310": {
-      "locked": {
-        "lastModified": 1782847189,
-        "narHash": "sha256-IWpaImuKa1YVOmnuPyyzbG6/Q6ZgKaOsP4sXmfTbkdQ=",
-        "rev": "b6018f87da91d19d0ab4cf979885689b469cdd41",
-        "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/25.11/nixos-25.11.12484.b6018f87da91/nixexprs.tar.xz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://channels.nixos.org/nixos-25.11/nixexprs.tar.xz"
-      }
-    },
     "nixpkgs-x86_64-darwin": {
       "locked": {
         "lastModified": 1793976852,
@@ -154,7 +141,6 @@
       "inputs": {
         "debuginfod-zig": "debuginfod-zig",
         "nixpkgs": "nixpkgs_3",
-        "nixpkgs-python310": "nixpkgs-python310",
         "nixpkgs-x86_64-darwin": "nixpkgs-x86_64-darwin_2",
         "zig-overlay": "zig-overlay"
       }

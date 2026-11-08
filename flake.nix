@@ -14,8 +14,6 @@
     nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
     debuginfod-zig.url = "github:pwndbg/debuginfod-zig/v1.0.2";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # only for python310, dropped in nixpkgs 26.05 (25.11 has no .tar.zst; it's its last release)
-    nixpkgs-python310.url = "https://channels.nixos.org/nixos-25.11/nixexprs.tar.xz";
     # nixpkgs 26.11 dropped x86_64-darwin; 26.05 still supports it
     nixpkgs-x86_64-darwin.url = "https://channels.nixos.org/nixpkgs-26.05-darwin/nixexprs.tar.zst";
   };
@@ -26,7 +24,6 @@
       nixpkgs,
       debuginfod-zig,
       zig-overlay,
-      nixpkgs-python310,
       nixpkgs-x86_64-darwin,
       ...
     }:
@@ -187,17 +184,47 @@
           # build python runs with LD_LIBRARY_PATH pointing at the target libpython. glibc skips a
           # foreign-arch lib, but a foreign byte order is fatal: s390x fails in `checksharedmods`.
           # Upstream: https://github.com/python/cpython/issues/160924 (fix: PR #161321).
-          # nixpkgs 26.05 dropped python310: take it from 25.11, for the same build/host platforms.
-          # Platforms are passed as plain descriptions (like pkgsCross does): 25.11 can't take
-          # platforms elaborated by a newer nixpkgs (comparing them loops forever).
+          # nixpkgs dropped python310 in 26.05: build it with the current cpython expression. The
+          # 3.10-only patches it no longer ships come from nixos-25.11, its last release with 3.10.
           python310 =
-            let
-              plain = p: { inherit (p) config; } // lib.optionalAttrs (p ? gcc) { inherit (p) gcc; };
-            in
-            prev.python310 or (import nixpkgs-python310 {
-              localSystem = plain prev.stdenv.buildPlatform;
-              crossSystem = plain prev.stdenv.hostPlatform;
-            }).python310;
+            prev.python310 or (
+              let
+                patch =
+                  path: hash:
+                  prev.fetchurl {
+                    name = baseNameOf path;
+                    url = "https://raw.githubusercontent.com/NixOS/nixpkgs/b6018f87da91d19d0ab4cf979885689b469cdd41/pkgs/development/interpreters/python/cpython/${path}";
+                    inherit hash;
+                  };
+              in
+              (prev.python311.override {
+                self = final.__splicedPackages.python310;
+                sourceVersion = {
+                  major = "3";
+                  minor = "10";
+                  patch = "19";
+                  suffix = "";
+                };
+                hash = "sha256-yPSlllciAdgd19+R9w4XfhmnDx1ImWi1S1+78pqXwHY=";
+                noldconfigPatch = patch "3.10/no-ldconfig.patch" "sha256-AaneOmdIHDHbH67pkMxshUCt/nZDCg1mwhQ7ubZ0i/4=";
+              }).overrideAttrs
+                (
+                  old:
+                  lib.optionalAttrs prev.stdenv.hostPlatform.isDarwin {
+                    # with clang: 25.11's distutils C++ patch for 3.7-3.10 (newer nixpkgs fall back to
+                    # bugs.python.org's for < 3.11) and its macOS Tcl/Tk lookup patch for 3.9-3.10
+                    patches =
+                      map (
+                        p:
+                        if (p.name or "") == "python-3.x-distutils-C++.patch" then
+                          patch "3.7/python-3.x-distutils-C++.patch" "sha256-WqArTEerQRw0jBSbG1jAmwV0NUPZVOkDQ3o1vYTq/uY="
+                        else
+                          p
+                      ) old.patches
+                      ++ [ (patch "3.9/darwin-tcl-tk.patch" "sha256-HA5/OwvxALNsB+0MJDqiAQC+kbRZYpKyZC5TTYEMYtQ=") ];
+                  }
+                )
+            );
 
           python315 = prev.python315.overrideAttrs (
             old:
