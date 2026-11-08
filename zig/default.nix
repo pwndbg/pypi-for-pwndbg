@@ -13,7 +13,15 @@
 let
   inherit (stdenv) targetPlatform;
 
-  glibcVersion = if targetPlatform.isLoongArch64 then ".2.36" else ".2.28";
+  glibcVersion =
+    if targetPlatform.isLoongArch64 then
+      ".2.36"
+    # zig >= 0.16 forces IEEE 128-bit `long double` on PowerPC (`-mabi=ieeelongdouble`), whose
+    # `__*ieee128` functions (printf & co.) glibc only has since 2.32
+    else if targetPlatform.isPower64 then
+      ".2.32"
+    else
+      ".2.28";
   abiVersion =
     if targetPlatform.isGnu then
       glibcVersion

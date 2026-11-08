@@ -149,7 +149,7 @@
             zig = zig-overlay.packages.${prev.stdenv.hostPlatform.system}."0.17.1";
           };
 
-          # Host stdenv with zig as CC (Linux: glibc 2.28, loongarch64: 2.36); plain stdenv on macOS.
+          # Host stdenv with zig as CC (Linux: glibc 2.28, ppc64le: 2.32, loongarch64: 2.36); plain stdenv on macOS.
           # Unlike `buildPackages.zig_glibc_2_28.stdenv`, build/host/target platforms are correct here.
           portableStdenv =
             if isLinux then
@@ -220,7 +220,19 @@
           zlib-static = makeStatic prev.zlib;
           zstd-static = makeStatic prev.zstd;
           xz-static = makeStatic prev.xz;
-          gmp-static = makeStatic prev.gmp;
+          # gmp 6.3.0's longlong.h spells LoongArch's 128-bit type `__int128__`, which only GCC
+          # accepts, not clang/zig (mpfr's copy of it already says `__int128`).
+          gmp-static = (makeStatic prev.gmp).overrideAttrs (
+            old:
+            lib.optionalAttrs final.stdenv.hostPlatform.isLoongArch64 {
+              env = (old.env or { }) // {
+                NIX_CFLAGS_COMPILE = toString [
+                  (old.env.NIX_CFLAGS_COMPILE or "")
+                  "-D__int128__=__int128"
+                ];
+              };
+            }
+          );
           libipt-static = makeStatic prev.libipt;
           libiconv-static = makeStatic prev.libiconvReal;
           ncurses-static = makeStatic prev.ncurses;

@@ -50,7 +50,7 @@ let
       "loongarch64-linux" = "manylinux_2_36_loongarch64";
       "s390x-linux" = "manylinux_2_28_s390x";
       "riscv64-linux" = "manylinux_2_39_riscv64";
-      "powerpc64le-linux" = "manylinux_2_28_ppc64le";
+      "powerpc64le-linux" = "manylinux_2_32_ppc64le";
       "armv7l-linux" = "manylinux_2_31_armv7l";
       "i686-linux" = "manylinux_2_28_i686";
 
