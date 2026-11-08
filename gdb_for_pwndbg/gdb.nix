@@ -30,7 +30,6 @@
   mpfr-static,
   libipt-static,
   sourceHighlight-static,
-  libclang_rt_ppc_builtins,
 
   breakpointHook,
   python3,
@@ -119,15 +118,9 @@ portableStdenv.mkDerivation (finalAttrs: {
     "-I${libiconv-static}/include"
   ]);
 
-  env.LDFLAGS = builtins.concatStringsSep " " (
-    [
-      "-L${libiconv-static}/lib"
-    ]
-    ++ lib.optionals stdenv.targetPlatform.isPower64 [
-      "-L${libclang_rt_ppc_builtins}/lib"
-      "-lclang_rt_ppc_builtins"
-    ]
-  );
+  env.LDFLAGS = builtins.concatStringsSep " " ([
+    "-L${libiconv-static}/lib"
+  ]);
 
   preConfigure = ''
     mkdir _build

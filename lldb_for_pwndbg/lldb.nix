@@ -22,7 +22,6 @@
   xz-static,
   ncurses-static,
   libxml2-static,
-  libclang_rt_ppc_builtins,
   libcurl-static,
 
   libcxx,
@@ -134,12 +133,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     python3
   ];
 
-  # https://discourse.nixos.org/t/cmakeflags-and-spaces-in-option-values/20170
-  preConfigure = lib.optionalString stdenv.targetPlatform.isPower64 ''
-    cmakeFlagsArray+=(-DCMAKE_EXE_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins -z lazy")
-    cmakeFlagsArray+=(-DCMAKE_SHARED_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins")
-  '';
-
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
     (lib.cmakeFeature "CMAKE_BUILD_TYPE" "RelWithDebInfo")
@@ -204,7 +197,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
     (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
-  ++ lib.optionals (stdenv.targetPlatform.isLinux && !stdenv.targetPlatform.isPower64) [
+  ++ lib.optionals stdenv.targetPlatform.isLinux [
     # make `lldb` binary with lazy symbols, that will allow `libpython_loader_lldb.so` to work :)
     (lib.cmakeFeature "CMAKE_EXE_LINKER_FLAGS" "-Wl,-z,lazy")
   ]

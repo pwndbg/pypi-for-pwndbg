@@ -177,7 +177,6 @@
             else
               final.pkgsStatic.stdenv;
 
-          libclang_rt_ppc_builtins = prev.callPackage ./zig/libclang_rt_ppc_builtins.nix { };
           liblldb_stub = prev.callPackage ./liblldb_stub { };
           libpython_loader_lldb = prev.callPackage ./libpython_loader_lldb { };
           libpython_stub = prev.callPackage ./libpython_stub { };
