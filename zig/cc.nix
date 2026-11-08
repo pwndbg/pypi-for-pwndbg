@@ -26,6 +26,13 @@ runCommand "zig-cc-${zig.version}"
     passthru = {
       isZig = true;
       inherit targetPrefix;
+
+      # Read by cc-wrapper (with the wrapper's targetPlatform) to drop hardening flags
+      # zig's clang rejects for that target; same idea as nixpkgs' clang.
+      hardeningUnsupportedFlagsByTargetPlatform =
+        targetPlatform:
+        lib.optional (!(targetPlatform.isx86_64 || targetPlatform.isAarch64)) "zerocallusedregs"
+        ++ lib.optional (targetPlatform.isLoongArch64 || targetPlatform.isAarch32) "stackclashprotection";
     };
 
     inherit zig;

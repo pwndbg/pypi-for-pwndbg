@@ -5,6 +5,7 @@
 
   lib,
   stdenv,
+  portableStdenv,
   targetPackages,
   pkgsBuildHost,
 
@@ -43,14 +44,7 @@
     "$datadir/auto-load"
   ],
 }:
-let
-  isCross = stdenv.buildPlatform != stdenv.targetPlatform;
-
-  # For macos we use normal llvm compiler
-  # For linux we need zig + forced glibc==2.28
-  stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
-in
-stdenvOver.mkDerivation (finalAttrs: {
+portableStdenv.mkDerivation (finalAttrs: {
   pname = "gdb";
   inherit version src;
 
@@ -95,7 +89,9 @@ stdenvOver.mkDerivation (finalAttrs: {
     zlib-static
     zstd-static
     xz-static
-    libdebuginfod-zig-static
+    (libdebuginfod-zig-static.overrideAttrs (old: {
+      postInstall = "";
+    }))
 
     python3
   ];
@@ -141,15 +137,6 @@ stdenvOver.mkDerivation (finalAttrs: {
   '';
   configureScript = "../configure";
 
-  # this option break alot of cross build..
-  hardeningDisable =
-    lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
-      "zerocallusedregs"
-    ]
-    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
-      "stackclashprotection"
-    ];
-
   configureFlags = [
     "--program-prefix="
     "--disable-werror"
@@ -189,11 +176,13 @@ stdenvOver.mkDerivation (finalAttrs: {
   ]
   ++ lib.optionals stdenv.targetPlatform.isDarwin [
     "--target=x86_64-apple-darwin"
-  ]
-  ++ lib.optionals (!stdenv.targetPlatform.isDarwin) [
-    "--target=${stdenv.targetPlatform.config}"
-    "--host=${stdenv.targetPlatform.config}"
-    "--build=${stdenv.buildPlatform.config}"
+  ];
+
+  # --target is needed even for native builds (gdb picks its default target from it)
+  configurePlatforms = lib.optionals stdenv.targetPlatform.isLinux [
+    "build"
+    "host"
+    "target"
   ];
 
   # TODO:
@@ -214,47 +203,47 @@ stdenvOver.mkDerivation (finalAttrs: {
     find $out/bin/ -type f -exec dsymutil {} \;
   '';
 
-#  postInstall = ''
-#    cd gdb
-#
-#    substituteInPlace ../../gdb/gdb.c \
-#      --replace-fail 'main (int argc, char **argv)' 'mainX (int argc, char **argv)'
-#
-#    substituteInPlace ../../gdb/maint.c \
-#      --replace-fail 'extern int main (int, char **);' '//extern int main (int, char **);'
-#
-#    substituteInPlace ../../gdb/maint.c \
-#      --replace-fail 'monstartup ((unsigned long) &main, (unsigned long) TEXTEND);' '//monstartup ((unsigned long) &main, (unsigned long) TEXTEND);'
-#
-#    make libgdb.a
-#    gcc -shared -o libgdb.so \
-#      -Wl,--whole-archive ./libgdb.a -Wl,--no-whole-archive \
-#      ../gdbsupport/libgdbsupport.a \
-#      ../libctf/.libs/libctf.a \
-#      ../bfd/.libs/libbfd.a \
-#      ../libiberty/pic/libiberty.a \
-#      ../readline/readline/libreadline.a \
-#      ../libdecnumber/libdecnumber.a \
-#      ../opcodes/.libs/libopcodes.a \
-#      ../gnulib/import/libgnu.a \
-#      ../readline/readline/libhistory.a \
-#      -ldebuginfod \
-#      -lpython3.10 \
-#      -lmpfr \
-#      -llzma \
-#      -lz \
-#      -lgmp \
-#      -lncurses \
-#      -ltinfo \
-#      -lexpat \
-#      -lzstd \
-#      -lsource-highlight \
-#      -lipt \
-#      ${libiconv-static}/lib/libiconv.a \
-#      ${libcxx}/lib/libc++.a ${libcxx}/lib/libc++abi.a \
-#      -lm \
-#      -Wl,--no-undefined
-#    mkdir -p $out/lib/
-#    cp libgdb.so $out/lib/
-#  '';
+  #  postInstall = ''
+  #    cd gdb
+  #
+  #    substituteInPlace ../../gdb/gdb.c \
+  #      --replace-fail 'main (int argc, char **argv)' 'mainX (int argc, char **argv)'
+  #
+  #    substituteInPlace ../../gdb/maint.c \
+  #      --replace-fail 'extern int main (int, char **);' '//extern int main (int, char **);'
+  #
+  #    substituteInPlace ../../gdb/maint.c \
+  #      --replace-fail 'monstartup ((unsigned long) &main, (unsigned long) TEXTEND);' '//monstartup ((unsigned long) &main, (unsigned long) TEXTEND);'
+  #
+  #    make libgdb.a
+  #    gcc -shared -o libgdb.so \
+  #      -Wl,--whole-archive ./libgdb.a -Wl,--no-whole-archive \
+  #      ../gdbsupport/libgdbsupport.a \
+  #      ../libctf/.libs/libctf.a \
+  #      ../bfd/.libs/libbfd.a \
+  #      ../libiberty/pic/libiberty.a \
+  #      ../readline/readline/libreadline.a \
+  #      ../libdecnumber/libdecnumber.a \
+  #      ../opcodes/.libs/libopcodes.a \
+  #      ../gnulib/import/libgnu.a \
+  #      ../readline/readline/libhistory.a \
+  #      -ldebuginfod \
+  #      -lpython3.10 \
+  #      -lmpfr \
+  #      -llzma \
+  #      -lz \
+  #      -lgmp \
+  #      -lncurses \
+  #      -ltinfo \
+  #      -lexpat \
+  #      -lzstd \
+  #      -lsource-highlight \
+  #      -lipt \
+  #      ${libiconv-static}/lib/libiconv.a \
+  #      ${libcxx}/lib/libc++.a ${libcxx}/lib/libc++abi.a \
+  #      -lm \
+  #      -Wl,--no-undefined
+  #    mkdir -p $out/lib/
+  #    cp libgdb.so $out/lib/
+  #  '';
 })

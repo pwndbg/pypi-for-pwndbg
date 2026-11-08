@@ -1,17 +1,12 @@
 {
   stdenv,
-  buildPackages,
+  portableStdenv,
   patchelf,
   darwin,
   lib,
 }:
-let
-  # Mirror the same stdenv override as lldb.nix:
-  # Linux  → zig glibc 2.28 (for portability across old distros)
-  # macOS  → normal stdenv
-  stdenvOver = if stdenv.targetPlatform.isLinux then buildPackages.zig_glibc_2_28.stdenv else stdenv;
-in
-stdenvOver.mkDerivation {
+# Linux: zig + glibc 2.28 (portable across old distros), macOS: normal stdenv
+portableStdenv.mkDerivation {
   pname = "libpython_stub";
   version = "1";
 
@@ -23,15 +18,6 @@ stdenvOver.mkDerivation {
   nativeBuildInputs =
     lib.optionals stdenv.hostPlatform.isLinux [ patchelf ]
     ++ lib.optionals stdenv.hostPlatform.isDarwin [ darwin.cctools ];
-
-  # this option break alot of cross build..
-  hardeningDisable =
-    lib.optionals (stdenv.targetPlatform.isLinux && stdenv.buildPlatform != stdenv.targetPlatform) [
-      "zerocallusedregs"
-    ]
-    ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
-      "stackclashprotection"
-    ];
 
   buildPhase =
     if stdenv.targetPlatform.isLinux then

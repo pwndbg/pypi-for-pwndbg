@@ -38,13 +38,12 @@ let
   # patches, so the two can't drift. Upstream defaults this to "git" on main and
   # "-rcN" on release candidates; pinning it keeps rc builds named like a final release.
   versionParts = builtins.splitVersion version;
-  versionSuffix = if (builtins.length versionParts) >= 4 then (builtins.elemAt versionParts 3) else "";
+  versionSuffix =
+    if (builtins.length versionParts) >= 4 then (builtins.elemAt versionParts 3) else "";
 
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
     inherit version monorepoSrc;
   };
-
-  isCross = stdenv.buildPlatform != stdenv.targetPlatform;
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -59,16 +58,10 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  # this option break alot of cross build..
+  # lazy binding: lets `libpython_loader_lldb.so` supply Python symbols at runtime
   hardeningDisable = [
     "bindnow"
     "relro"
-  ]
-  ++ lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
-    "zerocallusedregs"
-  ]
-  ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
-    "stackclashprotection"
   ];
 
   passthru = {
@@ -236,14 +229,16 @@ stdenvOver.mkDerivation (finalAttrs: {
     "lldb-server"
   ];
 
-  installPhase = (lib.optionalString stdenv.targetPlatform.isDarwin ''
-    find ./bin/ -type f -exec dsymutil {} \;
-    find ./lib/ -type f -name "*.dylib" -exec dsymutil {} \;
-  '') + ''
-    mkdir $out
-    mv bin $out/
-    mv lib $out/
-  '';
+  installPhase =
+    (lib.optionalString stdenv.targetPlatform.isDarwin ''
+      find ./bin/ -type f -exec dsymutil {} \;
+      find ./lib/ -type f -name "*.dylib" -exec dsymutil {} \;
+    '')
+    + ''
+      mkdir $out
+      mv bin $out/
+      mv lib $out/
+    '';
 
   doCheck = false;
   dontStrip = true;
