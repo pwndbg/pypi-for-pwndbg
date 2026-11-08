@@ -11,12 +11,11 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    debuginfod-zig.url = "github:pwndbg/debuginfod-zig/v1.0.0";
-    zig-overlay = {
-      url = "github:mitchellh/zig-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.zst";
+    debuginfod-zig.url = "github:pwndbg/debuginfod-zig/v1.0.2";
+    zig-overlay.url = "github:mitchellh/zig-overlay";
+    # only for python310, dropped in nixpkgs 26.05 (25.11 has no .tar.zst; it's its last release)
+    nixpkgs-python310.url = "https://channels.nixos.org/nixos-25.11/nixexprs.tar.xz";
   };
 
   outputs =
@@ -25,6 +24,7 @@
       nixpkgs,
       debuginfod-zig,
       zig-overlay,
+      nixpkgs-python310,
       ...
     }:
     let
@@ -177,27 +177,23 @@
           libpython_loader_lldb = prev.callPackage ./libpython_loader_lldb { };
           libpython_stub = prev.callPackage ./libpython_stub { };
 
-          # nixos-25.11 only ships python315 as 3.15.0a6 (before the ABI freeze); use the final release.
-          python315 =
-            (prev.python315.override {
-              self = final.__splicedPackages.python315;
-              sourceVersion = {
-                major = "3";
-                minor = "15";
-                patch = "0";
-                suffix = "";
-              };
-              hash = "sha256-ukvtG6NGuRaJC3bZ4yBFFCCqafZAiZfTPGZILurj1XU=";
-            }).overrideAttrs
-              (
-                old:
-                # 3.15 dropped configure's `RUNSHARED=` reset for cross builds (3.14 still has it), so the
-                # build python runs with LD_LIBRARY_PATH pointing at the target libpython. glibc skips a
-                # foreign-arch lib, but a foreign byte order is fatal: s390x fails in `checksharedmods`.
-                lib.optionalAttrs (prev.stdenv.hostPlatform != prev.stdenv.buildPlatform) {
-                  makeFlags = (old.makeFlags or [ ]) ++ [ "RUNSHARED=" ];
-                }
-              );
+          # 3.15 dropped configure's `RUNSHARED=` reset for cross builds (3.14 still has it), so the
+          # build python runs with LD_LIBRARY_PATH pointing at the target libpython. glibc skips a
+          # foreign-arch lib, but a foreign byte order is fatal: s390x fails in `checksharedmods`.
+          # Upstream: https://github.com/python/cpython/issues/160924 (fix: PR #161321).
+          # nixpkgs 26.05 dropped python310: take it from 25.11, for the same build/host platforms.
+          python310 =
+            prev.python310 or (import nixpkgs-python310 {
+              localSystem = prev.stdenv.buildPlatform;
+              crossSystem = prev.stdenv.hostPlatform;
+            }).python310;
+
+          python315 = prev.python315.overrideAttrs (
+            old:
+            lib.optionalAttrs (prev.stdenv.hostPlatform != prev.stdenv.buildPlatform) {
+              makeFlags = (old.makeFlags or [ ]) ++ [ "RUNSHARED=" ];
+            }
+          );
 
           # lldb's Python type annotations need swig >= 4.5.0 (nixpkgs ships 4.3.1).
           swig_4_5_0 = prev.swig.overrideAttrs (old: {
@@ -224,18 +220,30 @@
           };
 
           # Only Boost.Regex (all source-highlight needs). zig is clang, but its wrapper isn't flagged
-          # `isClang`, so pick b2's clang toolset by hand and drop clang.jam's own `--target=…`
-          # (nixpkgs patch, applied there only for `isClang`): it would override zig's `-target …gnu.2.28`.
+          # `isClang`, so pick b2's clang toolset by hand and stop clang.jam from adding its own
+          # `--target=…`: it would override zig's `-target …gnu.2.28`. Boost < 1.91: nixpkgs' patch
+          # (applied there only for `isClang`); >= 1.91: clang.jam's `<triple>none` option.
           boost-static =
             let
               onlyRegex = builtins.replaceStrings [ "--without-python" ] [ "--with-regex" ];
+              isClang = final.portableStaticStdenv.cc.isClang or false;
+              # start of the clang block in nixpkgs' user-config.jam (the gcc block looks the same)
+              clangCross = "using clang : cross : ${final.portableStaticStdenv.cc.targetPrefix}c++\n  : ";
             in
             (makeStatic (prev.boost.override { toolset = "clang"; })).overrideAttrs (old: {
               patches =
                 old.patches
-                ++ lib.optional (!(final.portableStaticStdenv.cc.isClang or false)) (
+                ++ lib.optional (!isClang && lib.versionOlder old.version "1.91") (
                   prev.path + "/pkgs/development/libraries/boost/fix-clang-target.patch"
                 );
+              # user-config.jam is written by nixpkgs' preConfigure
+              postConfigure =
+                (old.postConfigure or "")
+                + lib.optionalString (!isClang && lib.versionAtLeast old.version "1.91") ''
+                  substituteInPlace user-config.jam --replace-fail \
+                    ${lib.escapeShellArg "${clangCross}<archiver>"} \
+                    ${lib.escapeShellArg "${clangCross}<triple>none <archiver>"}
+                '';
               buildPhase = onlyRegex old.buildPhase;
               installPhase = onlyRegex old.installPhase;
             });
