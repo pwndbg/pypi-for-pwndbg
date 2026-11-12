@@ -127,7 +127,7 @@ Update `version`, `pypiVersion`, and the `src` hash (use `nix-prefetch-url` or `
 
 ## Supported targets
 
-- Linux glibc ≥ 2.28: x86_64, aarch64, s390x, powerpc64le, i686
-- Linux glibc ≥ 2.31: armv7l · ≥ 2.36: loongarch64 · ≥ 2.39: riscv64
+- Linux glibc ≥ 2.28: x86_64, aarch64, s390x, i686
+- Linux glibc ≥ 2.31: armv7l · ≥ 2.32: powerpc64le · ≥ 2.36: loongarch64 · ≥ 2.39: riscv64
 - macOS: x86_64, aarch64
 - **Not** supported: linux-musl, Windows

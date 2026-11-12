@@ -1,44 +1,63 @@
+# Zig toolchain (cc/bintools wrappers + stdenv) around a prebuilt `zig` binary
+# (from zig-overlay, see flake.nix). Called from `buildPackages`, so `stdenv.targetPlatform`
+# is the platform the wrapped compiler emits code for.
 {
   lib,
+  stdenv,
   callPackage,
-  llvmPackages_17,
-  llvmPackages_18,
-  llvmPackages_19,
-  llvmPackages_20,
-  zigVersions ? { },
+  wrapCCWith,
+  wrapBintoolsWith,
+  overrideCC,
+  zig,
 }:
 let
-  versions = {
-    "0.12.1" = {
-      llvmPackages = llvmPackages_17;
-      hash = "sha256-C56jyVf16Co/XCloMLSRsbG9r/gBc8mzCdeEMHV2T2s=";
-    };
-    "0.13.0" = {
-      llvmPackages = llvmPackages_18;
-      hash = "sha256-5qSiTq+UWGOwjDVZMIrAt2cDKHkyNPBSAEjpRQUByFM=";
-    };
-    "0.14.1" = {
-      llvmPackages = llvmPackages_19;
-      hash = "sha256-DhVJIY/z12PJZdb5j4dnCRb7k1CmeQVOnayYRP8azDI=";
-    };
-    "0.15.2" = {
-      llvmPackages = llvmPackages_20;
-      hash = "sha256-u3pEMcYN71d83MJh14vtzU4DJXnMHu/Jw86d9XvwKE8=";
-    };
-  }
-  // zigVersions;
+  inherit (stdenv) targetPlatform;
 
-  mkPackage =
-    {
-      version,
-      hash,
-      llvmPackages,
-    }@args:
-    callPackage ./generic.nix args;
+  glibcVersion =
+    if targetPlatform.isLoongArch64 then
+      ".2.36"
+    # zig >= 0.16 forces IEEE 128-bit `long double` on PowerPC (`-mabi=ieeelongdouble`), whose
+    # `__*ieee128` functions (printf & co.) glibc only has since 2.32
+    else if targetPlatform.isPower64 then
+      ".2.32"
+    else
+      ".2.28";
+  abiVersion =
+    if targetPlatform.isGnu then
+      glibcVersion
+    else if targetPlatform.isMusl then
+      ""
+    else
+      throw "not supported abi version ${targetPlatform.parsed.abi.name}";
 
-  zigPackages = lib.mapAttrs' (
-    version: args:
-    lib.nameValuePair (lib.versions.majorMinor version) (mkPackage (args // { inherit version; }))
-  ) versions;
+  target =
+    if targetPlatform.isLinux && targetPlatform.is32bit then
+      "${targetPlatform.parsed.cpu.family}-linux-${targetPlatform.parsed.abi.name}${abiVersion}"
+    else if targetPlatform.isLinux then
+      "${targetPlatform.parsed.cpu.name}-linux-${targetPlatform.parsed.abi.name}${abiVersion}"
+    else if targetPlatform.isDarwin then
+      "${targetPlatform.parsed.cpu.name}-macos.${targetPlatform.darwinSdkVersion}"
+    else
+      throw "not supported target";
+
+  bintools = wrapBintoolsWith { bintools = callPackage ./bintools.nix { inherit zig; }; };
+
+  cc = wrapCCWith {
+    cc = callPackage ./cc.nix { inherit zig; };
+    inherit bintools;
+    extraPackages = [ ];
+    nixSupport.cc-cflags = [
+      "-target"
+      target
+    ];
+    extraBuildCommands = lib.optionalString targetPlatform.isLoongArch64 ''
+      substituteInPlace $out/nix-support/cc-cflags-before \
+        --replace-quiet -mno-strict-align "" \
+        --replace-quiet -mstrict-align ""
+    '';
+  };
 in
-zigPackages
+{
+  inherit zig bintools cc;
+  stdenv = overrideCC stdenv cc;
+}

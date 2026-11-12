@@ -43,8 +43,9 @@ where `post{fix_number}` indicates our patch or fix release.
 
 
 ## What is supported:
-- linux (glibc 2.28>=), x86_64, aarch64, s390x, powerpc64le, i686
+- linux (glibc 2.28>=), x86_64, aarch64, s390x, i686
 - linux (glibc 2.31>=), armv7l
+- linux (glibc 2.32>=), powerpc64le
 - linux (glibc 2.36>=), loongarch64
 - linux (glibc 2.39>=), riscv64
 - macos, x86_64, aarch64

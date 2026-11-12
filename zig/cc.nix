@@ -4,7 +4,6 @@
   zig,
   stdenv,
   makeWrapper,
-  python3,
 }:
 let
   targetPrefix = lib.optionalString (
@@ -18,56 +17,31 @@ runCommand "zig-cc-${zig.version}"
 
     nativeBuildInputs = [
       makeWrapper
-    ]
-    ++ lib.optionals stdenv.targetPlatform.isLoongArch64 [
-      python3
     ];
 
     passthru = {
       isZig = true;
       inherit targetPrefix;
+
+      # Read by cc-wrapper (with the wrapper's targetPlatform) to drop hardening flags
+      # zig's clang rejects for that target; same idea as nixpkgs' clang.
+      hardeningUnsupportedFlagsByTargetPlatform =
+        targetPlatform:
+        lib.optional (!(targetPlatform.isx86_64 || targetPlatform.isAarch64)) "zerocallusedregs"
+        ++ lib.optional (targetPlatform.isLoongArch64 || targetPlatform.isAarch32) "stackclashprotection";
     };
 
     inherit zig;
   }
-  (
-    if stdenv.targetPlatform.isLoongArch64 then
-      ''
-        mkdir -p $out/bin
+  ''
+    mkdir -p $out/bin
+    for tool in cc c++ ld.lld; do
+      makeWrapper "$zig/bin/zig" "$out/bin/$tool" \
+        --add-flags "$tool" \
+        --run "export ZIG_GLOBAL_CACHE_DIR=\$TMPDIR"
+    done
 
-        cp ${./zig_wrapper.py} $out/bin/.zig-wrapper
-        chmod +x $out/bin/.zig-wrapper
-        patchShebangs $out/bin/.zig-wrapper
-        substituteInPlace $out/bin/.zig-wrapper \
-          --replace-fail '@zig@' "$zig/bin/zig"
-
-        for tool in ld.lld; do
-          makeWrapper "$zig/bin/zig" "$out/bin/$tool" \
-            --add-flags "$tool" \
-            --run "export ZIG_GLOBAL_CACHE_DIR=\$TMPDIR"
-        done
-
-        for tool in cc c++; do
-          makeWrapper "$out/bin/.zig-wrapper" "$out/bin/$tool" \
-            --add-flags "$tool" \
-            --run "export ZIG_GLOBAL_CACHE_DIR=\$TMPDIR"
-        done
-
-        ln -s $out/bin/c++ $out/bin/clang++
-        ln -s $out/bin/cc $out/bin/clang
-        ln -s $out/bin/ld.lld $out/bin/ld
-      ''
-    else
-      ''
-        mkdir -p $out/bin
-        for tool in cc c++ ld.lld; do
-          makeWrapper "$zig/bin/zig" "$out/bin/$tool" \
-            --add-flags "$tool" \
-            --run "export ZIG_GLOBAL_CACHE_DIR=\$TMPDIR"
-        done
-
-        ln -s $out/bin/c++ $out/bin/clang++
-        ln -s $out/bin/cc $out/bin/clang
-        ln -s $out/bin/ld.lld $out/bin/ld
-      ''
-  )
+    ln -s $out/bin/c++ $out/bin/clang++
+    ln -s $out/bin/cc $out/bin/clang
+    ln -s $out/bin/ld.lld $out/bin/ld
+  ''

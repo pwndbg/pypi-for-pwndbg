@@ -22,7 +22,6 @@
   xz-static,
   ncurses-static,
   libxml2-static,
-  libclang_rt_ppc_builtins,
   libcurl-static,
 
   libcxx,
@@ -38,13 +37,12 @@ let
   # patches, so the two can't drift. Upstream defaults this to "git" on main and
   # "-rcN" on release candidates; pinning it keeps rc builds named like a final release.
   versionParts = builtins.splitVersion version;
-  versionSuffix = if (builtins.length versionParts) >= 4 then (builtins.elemAt versionParts 3) else "";
+  versionSuffix =
+    if (builtins.length versionParts) >= 4 then (builtins.elemAt versionParts 3) else "";
 
   tblgen = pkgsBuildHost.callPackage ./tblgen.nix {
     inherit version monorepoSrc;
   };
-
-  isCross = stdenv.buildPlatform != stdenv.targetPlatform;
 
   # For macos we use normal llvm compiler
   # For linux we need zig + forced glibc==2.28
@@ -59,16 +57,10 @@ stdenvOver.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  # this option break alot of cross build..
+  # lazy binding: lets `libpython_loader_lldb.so` supply Python symbols at runtime
   hardeningDisable = [
     "bindnow"
     "relro"
-  ]
-  ++ lib.optionals (stdenv.targetPlatform.isLinux && isCross) [
-    "zerocallusedregs"
-  ]
-  ++ lib.optionals (stdenv.targetPlatform.isLoongArch64 || stdenv.targetPlatform.isAarch32) [
-    "stackclashprotection"
   ];
 
   passthru = {
@@ -141,12 +133,6 @@ stdenvOver.mkDerivation (finalAttrs: {
     python3
   ];
 
-  # https://discourse.nixos.org/t/cmakeflags-and-spaces-in-option-values/20170
-  preConfigure = lib.optionalString stdenv.targetPlatform.isPower64 ''
-    cmakeFlagsArray+=(-DCMAKE_EXE_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins -z lazy")
-    cmakeFlagsArray+=(-DCMAKE_SHARED_LINKER_FLAGS="-L${libclang_rt_ppc_builtins}/lib -lclang_rt_ppc_builtins")
-  '';
-
   cmakeFlags = [
     (lib.cmakeFeature "LLVM_HOST_TRIPLE" "${stdenv.targetPlatform.config}")
     (lib.cmakeFeature "CMAKE_BUILD_TYPE" "RelWithDebInfo")
@@ -211,7 +197,7 @@ stdenvOver.mkDerivation (finalAttrs: {
     (lib.cmakeFeature "Python3_INCLUDE_DIR" "${python3}/include/python${python3.pythonVersion}")
     (lib.cmakeFeature "Python3_LIBRARY" "${python3}/lib/libpython${python3.pythonVersion}${stdenv.targetPlatform.extensions.library}")
   ]
-  ++ lib.optionals (stdenv.targetPlatform.isLinux && !stdenv.targetPlatform.isPower64) [
+  ++ lib.optionals stdenv.targetPlatform.isLinux [
     # make `lldb` binary with lazy symbols, that will allow `libpython_loader_lldb.so` to work :)
     (lib.cmakeFeature "CMAKE_EXE_LINKER_FLAGS" "-Wl,-z,lazy")
   ]
@@ -236,14 +222,16 @@ stdenvOver.mkDerivation (finalAttrs: {
     "lldb-server"
   ];
 
-  installPhase = (lib.optionalString stdenv.targetPlatform.isDarwin ''
-    find ./bin/ -type f -exec dsymutil {} \;
-    find ./lib/ -type f -name "*.dylib" -exec dsymutil {} \;
-  '') + ''
-    mkdir $out
-    mv bin $out/
-    mv lib $out/
-  '';
+  installPhase =
+    (lib.optionalString stdenv.targetPlatform.isDarwin ''
+      find ./bin/ -type f -exec dsymutil {} \;
+      find ./lib/ -type f -name "*.dylib" -exec dsymutil {} \;
+    '')
+    + ''
+      mkdir $out
+      mv bin $out/
+      mv lib $out/
+    '';
 
   doCheck = false;
   dontStrip = true;
