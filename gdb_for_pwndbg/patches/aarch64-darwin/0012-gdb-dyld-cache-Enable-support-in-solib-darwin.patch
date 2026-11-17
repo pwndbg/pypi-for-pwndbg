@@ -1,0 +1,145 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:25 -0700
+Subject: [PATCH 12/14] gdb/dyld cache: Enable support in solib-darwin
+
+---
+ gdb/solib-darwin.c | 77 ++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 64 insertions(+), 13 deletions(-)
+
+diff --git a/gdb/solib-darwin.c b/gdb/solib-darwin.c
+index 3f816cd..dca8902 100644
+--- a/gdb/solib-darwin.c
++++ b/gdb/solib-darwin.c
+@@ -21,6 +21,7 @@
+ #include "bfd.h"
+ #include "breakpoint.h"
+ #include "extract-store-integer.h"
++#include "gdbsupport/common-utils.h"
+ #include "objfiles.h"
+ #include "gdbcore.h"
+ #include "target.h"
+@@ -79,6 +80,10 @@ struct gdb_dyld_all_image_infos
+   CORE_ADDR info;
+   /* Notifier (function called when a library is added or removed).  */
+   CORE_ADDR notifier;
++  CORE_ADDR dyld_cache_slide;
++  CORE_ADDR dyld_cache_start;
++  /* TODO: compute and use this */
++  CORE_ADDR dyld_cache_end;
+ };
+ 
+ /* Current all_image_infos version.  */
+@@ -130,19 +135,25 @@ darwin_dyld_version_ok (const struct darwin_info *info)
+ static void
+ darwin_load_image_infos (struct darwin_info *info)
+ {
+-  gdb_byte buf[24];
++  gdb_byte buf[200];
+   bfd_endian byte_order = gdbarch_byte_order (current_inferior ()->arch ());
+   type *ptr_type
+     = builtin_type (current_inferior ()->arch ())->builtin_data_ptr;
++  ULONGEST ptr_length = ptr_type->length ();
+   int len;
+ 
+   /* If the structure address is not known, don't continue.  */
+   if (info->all_image_addr == 0)
+     return;
+ 
+-  /* The structure has 4 fields: version (4 bytes), count (4 bytes),
+-     info (pointer) and notifier (pointer).  */
+-  len = 4 + 4 + 2 * ptr_type->length ();
++  /* This structure gets larger and larger with each dyld version update.
++   * When a version adds new fields, they get added on to the end, so
++   * compatibility with lower versions is guaranteed by checking the version
++   * field and only reading that many fields. Here we assume we can read
++   * as many fields as exists on the latest version known to gdb. For lower
++   * versions, we just ignore the invalid fields later. */
++  len = 8 + 2 * ptr_length + align_up (2, ptr_length) + 16 * ptr_length + 16
++        + ptr_length;
+   gdb_assert (len <= sizeof (buf));
+   memset (&info->all_image, 0, sizeof (info->all_image));
+ 
+@@ -157,10 +168,26 @@ darwin_load_image_infos (struct darwin_info *info)
+ 
+   info->all_image.count = extract_unsigned_integer (buf + 4, 4, byte_order);
+   info->all_image.info = extract_typed_address (buf + 8, ptr_type);
+-  info->all_image.notifier = extract_typed_address
+-    (buf + 8 + ptr_type->length (), ptr_type);
+-}
++  info->all_image.notifier
++      = extract_typed_address (buf + 8 + ptr_length, ptr_type);
+ 
++  if (info->all_image.version >= 15)
++    {
++      info->all_image.dyld_cache_slide = extract_typed_address (
++          buf + 8 + 2 * ptr_length + align_up (2, ptr_length)
++              + 15 * ptr_length,
++          ptr_type);
++      info->all_image.dyld_cache_start = extract_typed_address (
++          buf + 8 + 2 * ptr_length + align_up (2, ptr_length) + 16 * ptr_length
++              + 16,
++          ptr_type);
++    }
++  else
++    {
++      info->all_image.dyld_cache_slide = 0;
++      info->all_image.dyld_cache_start = 0;
++    }
++}
+ /* Link map info to include in an allocated solib entry.  */
+ 
+ struct lm_info_darwin final : public lm_info
+@@ -321,8 +348,15 @@ darwin_solib_ops::current_sos () const
+ 	break;
+ 
+       /* Create and fill the new struct solib element.  */
+-      sos.emplace_back (std::make_unique<lm_info_darwin> (load_addr),
+-			file_path.get (), file_path.get (), *this);
++      lm_info_darwin lm_info (load_addr);
++      if (info->all_image.dyld_cache_start != 0
++          && load_addr >= info->all_image.dyld_cache_start)
++        {
++          lm_info.in_dyld_cache = 1;
++        }
++
++      sos.emplace_back (std::make_unique<lm_info_darwin> (lm_info),
++                        file_path.get (), file_path.get (), *this);
+     }
+ 
+   return sos;
+@@ -628,13 +662,30 @@ darwin_solib_ops::relocate_section_addresses (solib &so,
+ 					      target_section *sec) const
+ {
+   auto *li = gdb::checked_static_cast<lm_info_darwin *> (so.lm_info.get ());
+-
+-  sec->addr += li->lm_addr;
+-  sec->endaddr += li->lm_addr;
++  CORE_ADDR dyld_cache_slide;
++  if (li->in_dyld_cache)
++    {
++      dyld_cache_slide = get_darwin_info (current_program_space)
++                             ->all_image.dyld_cache_slide;
++      sec->addr = sec->the_bfd_section->lma + dyld_cache_slide;
++      sec->endaddr = sec->addr + sec->the_bfd_section->size;
++    }
++  else
++    {
++      sec->addr += li->lm_addr;
++      sec->endaddr += li->lm_addr;
++    }
+ 
+   /* Best effort to set addr_high/addr_low.  This is used only by
+      'info sharedlibary'.  */
+-  if (so.addr_high == 0)
++  if (li->in_dyld_cache)
++    {
++      /* Show the Mach-O header in info sharedlibrary for dyld's from the dyld
++       * shared cache so it's easier to look into them. */
++      so.addr_low = li->lm_addr;
++      so.addr_high = sec->endaddr;
++    }
++  else if (so.addr_high == 0)
+     {
+       so.addr_low = sec->addr;
+       so.addr_high = sec->endaddr;

@@ -1,0 +1,232 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pypi-for-pwndbg <pwndbg@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 02:47:37 +0100
+Subject: [PATCH] darwin-nat: start the inferior with posix_spawn +
+ PT_ATTACHEXC
+
+On macOS 27 (aarch64), "run" hangs right after the inferior exec's
+until the user presses ^C (PR gdb/24069, gdb/27663, gdb/30939): with
+fork + PT_TRACE_ME + exec, the exec creates a new task and neither the
+exec SIGTRAP nor the dead-name notification for the old task port is
+delivered until the inferior gets some other signal (^C reaches the
+inferior, which owns the terminal). Polling mach_msg does not help: the
+messages are not queued before that.
+
+Start the inferior the way debugserver does instead: posix_spawn it with
+POSIX_SPAWN_START_SUSPENDED (plus no ASLR, its own process group,
+default signal dispositions, the inferior's cwd and tty), set up the
+task and exception ports, PT_ATTACHEXC, then task_resume and wait for
+the SIGSTOP the attach queues as the initial stop. Resuming with no
+signal discards it, like the exec SIGTRAP before. No exec happens under
+ptrace and no shell is involved (arguments are split without globbing or
+variable expansion).
+---
+ gdb/darwin-nat.c | 177 ++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 161 insertions(+), 16 deletions(-)
+
+diff --git a/gdb/darwin-nat.c b/gdb/darwin-nat.c
+index 2729be7..f5df925 100644
+--- a/gdb/darwin-nat.c
++++ b/gdb/darwin-nat.c
+@@ -54,6 +54,10 @@
+ #include <libproc.h>
+ #include <sys/syscall.h>
+ #include <spawn.h>
++#include <fcntl.h>
++#include "gdbsupport/buildargv.h"
++#include "gdbsupport/scope-exit.h"
++#include "gdbsupport/eintr.h"
+ 
+ #include <mach/mach_error.h>
+ #include <mach/mach_vm.h>
+@@ -2027,6 +2031,15 @@ caching a copy of your shell.  The shell used by \"%ps\" is now:\n\
+   return true;
+ }
+ 
++/* Start the inferior the way debugserver does: posix_spawn it suspended
++   and attach to it with PT_ATTACHEXC, instead of fork + PT_TRACE_ME +
++   exec.  On recent macOS an exec under ptrace creates a new task and
++   neither the exec SIGTRAP nor the dead-name notification for the old
++   task port is delivered until the inferior receives some other signal,
++   so "run" hangs until the user presses ^C (PR gdb/24069, gdb/27663,
++   gdb/30939).  No exec happens under ptrace here, and no shell is
++   involved either (so SIP does not get in the way).  */
++
+ void
+ darwin_nat_target::create_inferior (const char *exec_file,
+ 				    const std::string &allargs,
+@@ -2035,26 +2048,158 @@ darwin_nat_target::create_inferior (const char *exec_file,
+   if (exec_file == nullptr)
+     no_executable_specified_error ();
+ 
+-  std::optional<scoped_restore_tmpl<bool>> restore_startup_with_shell;
+-  darwin_nat_target *the_target = this;
++  /* Split the arguments like a shell would (no globbing or variable
++     expansion: there is no shell).  */
++  gdb_argv built_argv (allargs.c_str ());
++  std::vector<char *> argv;
++  argv.push_back (const_cast<char *> (exec_file));
++  for (char *arg : built_argv.as_array_view ())
++    argv.push_back (arg);
++  argv.push_back (nullptr);
++
++  posix_spawnattr_t attr;
++  int res = posix_spawnattr_init (&attr);
++  if (res != 0)
++    error (_("Cannot initialize posix_spawn attributes: %s"),
++	   safe_strerror (res));
++  SCOPE_EXIT { posix_spawnattr_destroy (&attr); };
++
++  posix_spawn_file_actions_t file_actions;
++  res = posix_spawn_file_actions_init (&file_actions);
++  if (res != 0)
++    error (_("Cannot initialize posix_spawn file actions: %s"),
++	   safe_strerror (res));
++  SCOPE_EXIT { posix_spawn_file_actions_destroy (&file_actions); };
+ 
+-  if (startup_with_shell && may_have_sip ())
++#ifndef _POSIX_SPAWN_DISABLE_ASLR
++#define _POSIX_SPAWN_DISABLE_ASLR 0x0100
++#endif
++  /* Start suspended, without ASLR, in a new process group (like
++     fork_inferior's setpgid, so that job control works), with default
++     signal dispositions and an empty signal mask.  */
++  short ps_flags = (POSIX_SPAWN_START_SUSPENDED | _POSIX_SPAWN_DISABLE_ASLR
++		    | POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_SETSIGDEF
++		    | POSIX_SPAWN_SETSIGMASK);
++  posix_spawnattr_setflags (&attr, ps_flags);
++  posix_spawnattr_setpgroup (&attr, 0);
++  sigset_t sigs;
++  sigfillset (&sigs);
++  posix_spawnattr_setsigdefault (&attr, &sigs);
++  sigemptyset (&sigs);
++  posix_spawnattr_setsigmask (&attr, &sigs);
++
++  inferior *inf = current_inferior ();
++
++  const std::string &cwd = inf->cwd ();
++  if (!cwd.empty ())
+     {
+-      if (!maybe_cache_shell ())
+-	{
+-	  warning (_("startup-with-shell is now temporarily disabled"));
+-	  restore_startup_with_shell.emplace (&startup_with_shell, 0);
+-	}
++      gdb::unique_xmalloc_ptr<char> expanded_cwd
++	= gdb_rl_tilde_expand (cwd.c_str ());
++      posix_spawn_file_actions_addchdir_np (&file_actions,
++					    expanded_cwd.get ());
++    }
++
++  const std::string &tty = inf->tty ();
++  if (!tty.empty ())
++    {
++      posix_spawn_file_actions_addopen (&file_actions, 0, tty.c_str (),
++					O_RDWR | O_NOCTTY, 0);
++      posix_spawn_file_actions_adddup2 (&file_actions, 0, 1);
++      posix_spawn_file_actions_adddup2 (&file_actions, 0, 2);
++    }
++
++  pid_t pid;
++  res = posix_spawn (&pid, exec_file, &file_actions, &attr, argv.data (),
++		     env);
++  if (res != 0)
++    error (_("Cannot start %ps: %s"),
++	   styled_string (file_name_style.style (), exec_file),
++	   safe_strerror (res));
++
++  inferior_appeared (inf, pid);
++
++  /* Get the task port and set up the exception ports and the dead-name
++     notification; this kills the child on failure.  */
++  darwin_attach_pid (inf);
++
++  /* Become the tracer.  Signals are reported as Mach exceptions (like
++     PT_SIGEXC), and the attach queues a SIGSTOP.  */
++  if (PTRACE (PT_ATTACHEXC, pid, 0, 0) != 0)
++    {
++      int saved_errno = errno;
++      int status;
++
++      ::kill (pid, SIGKILL);
++      gdb::waitpid (pid, &status, 0);
++      error (_("Unable to attach to process %d: %s"), pid,
++	     safe_strerror (saved_errno));
+     }
+ 
+-  /* Do the hard work.  */
+-  fork_inferior (exec_file, allargs, env, darwin_ptrace_me,
+-		 [the_target] (int pid)
+-		   {
+-		     the_target->ptrace_him (pid);
+-		   },
+-		 darwin_pre_ptrace, copied_shell,
+-		 darwin_execvp);
++  init_thread_list (inf);
++
++  darwin_inferior *priv = get_darwin_inferior (inf);
++  darwin_check_osabi (priv, inferior_ptid.tid ());
++
++  scoped_restore save_starting_up
++    = make_scoped_restore (&inf->starting_up, true);
++
++  /* The child is in its own process group already, give it the
++     terminal.  */
++  target_terminal::init ();
++  target_terminal::inferior ();
++
++  /* Let it run into the SIGSTOP queued by PT_ATTACHEXC; that is the
++     initial stop (the thread holds the exception message, so resuming
++     with no signal discards the SIGSTOP, like the exec SIGTRAP with
++     fork_inferior).  */
++  mach_task_basic_info_data_t task_basic_info;
++  mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
++  kern_return_t kret = task_info (priv->task, MACH_TASK_BASIC_INFO,
++				  (task_info_t) &task_basic_info, &count);
++  MACH_CHECK_ERROR (kret);
++  /* POSIX_SPAWN_START_SUSPENDED does not necessarily leave a Mach-level
++     suspension behind (resuming the attached process lets it run); drop
++     the ones there are, task_resume fails on an unsuspended task.  */
++  inferior_debug (2, _("create_inferior: task suspend count %d\n"),
++		  task_basic_info.suspend_count);
++  for (integer_t i = 0; kret == KERN_SUCCESS
++			&& i < task_basic_info.suspend_count; i++)
++    {
++      kret = task_resume (priv->task);
++      MACH_CHECK_ERROR (kret);
++    }
++
++  target_waitstatus ws;
++  ptid_t ptid;
++  do
++    ptid = wait_1 (ptid_t (pid), &ws);
++  while (ws.kind () == TARGET_WAITKIND_IGNORE
++	 || ws.kind () == TARGET_WAITKIND_SPURIOUS);
++
++  switch (ws.kind ())
++    {
++    case TARGET_WAITKIND_STOPPED:
++      break;
++    case TARGET_WAITKIND_EXITED:
++      target_terminal::ours ();
++      target_mourn_inferior (ptid);
++      error (_("During startup program exited with code %d."),
++	     ws.exit_status ());
++    case TARGET_WAITKIND_SIGNALLED:
++      target_terminal::ours ();
++      target_mourn_inferior (ptid);
++      error (_("During startup program terminated with signal %s, %s."),
++	     gdb_signal_to_name (ws.sig ()),
++	     gdb_signal_to_string (ws.sig ()));
++    default:
++      error (_("Unexpected event during startup: %s"),
++	     ws.to_string ().c_str ());
++    }
++
++  switch_to_thread (this, ptid);
++
++  /* Mark all threads internally stopped, like gdb_startup_inferior.  */
++  set_internal_state (this, ptid_t (pid), THREAD_INT_STOPPED);
+ }
+ 
+ 

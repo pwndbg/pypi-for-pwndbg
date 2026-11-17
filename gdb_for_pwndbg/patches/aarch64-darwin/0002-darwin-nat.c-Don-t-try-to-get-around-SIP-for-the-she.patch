@@ -1,0 +1,125 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:15 -0700
+Subject: [PATCH 02/14] darwin-nat.c: Don't try to get around SIP for the shell
+ if the binary is arm64e
+
+---
+ gdb/darwin-nat.c        | 58 +++++++++++++++++++++++++++++++++++++++++
+ include/mach-o/loader.h |  6 ++---
+ 2 files changed, 61 insertions(+), 3 deletions(-)
+
+diff --git a/gdb/darwin-nat.c b/gdb/darwin-nat.c
+index d9faf50..2729be7 100644
+--- a/gdb/darwin-nat.c
++++ b/gdb/darwin-nat.c
+@@ -19,6 +19,7 @@
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+ 
+ #include "extract-store-integer.h"
++#include "gdbsupport/errors.h"
+ #include "top.h"
+ #include "inferior.h"
+ #include "target.h"
+@@ -32,6 +33,7 @@
+ #include "regcache.h"
+ #include "event-top.h"
+ #include "inf-loop.h"
++#include "gdbsupport/common-inferior.h"
+ #include <sys/stat.h>
+ #include "inf-child.h"
+ #include "value.h"
+@@ -1879,6 +1881,40 @@ copy_shell_to_cache (const char *shell, const std::string &new_name)
+   unlink_file_on_error.keep ();
+ }
+ 
++/* Checks if abfd is or contains (in the case of a universal binary) an aarch64
++ * binary with subtype armv8e. */
++static bool
++is_bfd_arm64e (struct bfd *abfd)
++{
++  bfd *obj_abfd = NULL;
++  bool res;
++  if (bfd_get_flavour (abfd) != bfd_target_mach_o_flavour)
++    {
++      return false;
++    }
++
++  obj_abfd = bfd_mach_o_fat_extract (abfd, bfd_object,
++                                     bfd_lookup_arch (bfd_arch_aarch64, 0));
++
++  if (!obj_abfd)
++    {
++      return false;
++    }
++
++  res = (bfd_mach_o_get_data (obj_abfd)->header.cpusubtype
++         & ~BFD_MACH_O_CPU_SUBTYPE_MASK)
++        == BFD_MACH_O_CPU_SUBTYPE_ARM64E;
++
++  /* Let the caller handle the argument they passed in. Let's clean up after
++   * ourselves though. */
++  if (obj_abfd != abfd)
++    {
++      bfd_close (obj_abfd);
++    }
++
++  return res;
++}
++
+ /* If $SHELL is restricted, try to cache a copy.  Starting with El
+    Capitan, macOS introduced System Integrity Protection.  Among other
+    things, this prevents certain executables from being ptrace'd.  In
+@@ -1894,6 +1930,7 @@ maybe_cache_shell ()
+   /* SF_RESTRICTED is defined in sys/stat.h and lets us determine if a
+      given file is subject to SIP.  */
+ #ifdef SF_RESTRICTED
++  bfd *abfd;
+ 
+   /* If a check fails we want to revert -- maybe the user deleted the
+      cache while gdb was running, or something like that.  */
+@@ -1923,6 +1960,27 @@ The error was: %s"),
+   if ((sb.st_flags & SF_RESTRICTED) == 0)
+     return true;
+ 
++  abfd = bfd_openr (shell, NULL);
++
++  if (!abfd)
++    {
++      error (_ ("maybe_cache_shell: bfd open for shell errored."));
++      return false;
++    }
++
++  /* If a binary is arm64e, it needs to be signed by Apple(?). Thus, we skip
++   * our SIP bypass if it is indeed arm64e. */
++  if (is_bfd_arm64e (abfd))
++    {
++      warning ("The shell is arm64e.\n\
++This means that we will not be able to run the process with a shell on this \
++device");
++      bfd_close (abfd);
++      return false;
++    }
++
++  bfd_close (abfd);
++
+   /* Put the copy somewhere like ~/Library/Caches/gdb/bin/sh.  */
+   std::string new_name = get_standard_cache_dir ();
+   /* There's no need to insert a directory separator here, because
+diff --git a/include/mach-o/loader.h b/include/mach-o/loader.h
+index b0b00c1..f398097 100644
+--- a/include/mach-o/loader.h
++++ b/include/mach-o/loader.h
+@@ -79,9 +79,9 @@ typedef enum bfd_mach_o_cpu_subtype
+ 
+   /* arm64.  */
+   BFD_MACH_O_CPU_SUBTYPE_ARM64_ALL = 0,
+-  BFD_MACH_O_CPU_SUBTYPE_ARM64_V8 = 1
+-}
+-bfd_mach_o_cpu_subtype;
++  BFD_MACH_O_CPU_SUBTYPE_ARM64_V8 = 1,
++  BFD_MACH_O_CPU_SUBTYPE_ARM64E = 2,
++} bfd_mach_o_cpu_subtype;
+ 
+ typedef enum bfd_mach_o_filetype
+ {

@@ -1,0 +1,196 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pypi-for-pwndbg <pwndbg@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 03:16:15 +0100
+Subject: [PATCH 18/18] darwin-nat: implement "info proc" (exe, cwd, mappings)
+
+"info proc" was "Not supported on this target" on Darwin. Print the
+executable (proc_pidpath), the cwd (PROC_PIDVNODEPATHINFO) and the
+mappings, which come from mach_vm_region_recurse descending into submaps
+(like debugserver's qMemoryRegionInfo), named after their backing file
+(proc_regionfilename) or [stack]/[heap] from the Mach user tag. The
+mappings table has the same layout as on GNU/Linux, so tools parsing
+"info proc mappings" work.
+---
+ gdb/darwin-nat.c | 155 +++++++++++++++++++++++++++++++++++++++++++++++
+ gdb/darwin-nat.h |   2 +
+ 2 files changed, 157 insertions(+)
+
+diff --git a/gdb/darwin-nat.c b/gdb/darwin-nat.c
+index f5df925..37e77dd 100644
+--- a/gdb/darwin-nat.c
++++ b/gdb/darwin-nat.c
+@@ -2587,6 +2587,161 @@ set_enable_mach_exceptions (const char *args, int from_tty,
+     }
+ }
+ 
++/* Return the "objfile" column of "info proc mappings" for the region at
++   ADDR of process PID: its backing file, or a pseudo name derived from the
++   region's Mach user tag, like Linux's /proc/PID/maps.  */
++
++static std::string
++darwin_region_name (int pid, mach_vm_address_t addr, unsigned int user_tag)
++{
++  char path[PATH_MAX];
++  int len = proc_regionfilename (pid, addr, path, sizeof (path));
++  if (len > 0)
++    return std::string (path, len);
++
++  switch (user_tag)
++    {
++    case VM_MEMORY_STACK:
++      return "[stack]";
++    case VM_MEMORY_MALLOC:
++    case VM_MEMORY_MALLOC_SMALL:
++    case VM_MEMORY_MALLOC_LARGE:
++    case VM_MEMORY_MALLOC_HUGE:
++    case VM_MEMORY_MALLOC_TINY:
++    case VM_MEMORY_MALLOC_LARGE_REUSABLE:
++    case VM_MEMORY_MALLOC_LARGE_REUSED:
++    case VM_MEMORY_MALLOC_NANO:
++    case VM_MEMORY_MALLOC_MEDIUM:
++      return "[heap]";
++    default:
++      return "";
++    }
++}
++
++/* Implement "info proc" (exe, cwd and mappings) for Darwin.  The
++   mappings come from mach_vm_region_recurse (what debugserver uses for
++   qMemoryRegionInfo) and are printed like on GNU/Linux, so that tools
++   parsing "info proc mappings" work.  */
++
++bool
++darwin_nat_target::info_proc (const char *args, enum info_proc_what what)
++{
++  bool exe_f = (what == IP_MINIMAL || what == IP_EXE || what == IP_ALL);
++  bool cwd_f = (what == IP_MINIMAL || what == IP_CWD || what == IP_ALL);
++  bool mappings_f = (what == IP_MAPPINGS || what == IP_ALL);
++
++  inferior *inf = current_inferior ();
++  int pid;
++  gdb_argv built_argv (args);
++  if (built_argv.count () == 0)
++    {
++      if (inf->pid == 0)
++	error (_("No current process: you must name one."));
++      pid = inf->pid;
++    }
++  else if (built_argv.count () == 1 && isdigit ((unsigned char) built_argv[0][0]))
++    pid = strtol (built_argv[0], nullptr, 10);
++  else
++    error (_("Too many parameters: %s"), args);
++
++  gdb_printf (_("process %d\n"), pid);
++
++  if (exe_f)
++    {
++      char path[PROC_PIDPATHINFO_MAXSIZE];
++      if (proc_pidpath (pid, path, sizeof (path)) > 0)
++	gdb_printf ("exe = '%s'\n", path);
++      else
++	warning (_("unable to fetch executable path name"));
++    }
++
++  if (cwd_f)
++    {
++      struct proc_vnodepathinfo vpi;
++      if (proc_pidinfo (pid, PROC_PIDVNODEPATHINFO, 0, &vpi, sizeof (vpi))
++	  == (int) sizeof (vpi))
++	gdb_printf ("cwd = '%s'\n", vpi.pvi_cdir.vip_path);
++      else
++	warning (_("unable to fetch current working directory"));
++    }
++
++  if (mappings_f)
++    {
++      task_t task = TASK_NULL;
++      bool deallocate_task = false;
++      darwin_inferior *priv = get_darwin_inferior (inf);
++
++      if (priv != nullptr && inf->pid == pid)
++	task = priv->task;
++      else if (task_for_pid (mach_task_self (), pid, &task) == KERN_SUCCESS)
++	deallocate_task = true;
++      else
++	error (_("Unable to get the Mach task port of process %d"), pid);
++      SCOPE_EXIT
++	{
++	  if (deallocate_task)
++	    mach_port_deallocate (mach_task_self (), task);
++	};
++
++      gdbarch *gdbarch = inf->arch ();
++      gdb_printf (_("Mapped address spaces:\n\n"));
++      ui_out_emit_table emitter (current_uiout, 6, -1, "ProcMappings");
++
++      int width = gdbarch_addr_bit (gdbarch) == 32 ? 10 : 18;
++      current_uiout->table_header (width, ui_left, "start", "Start Addr");
++      current_uiout->table_header (width, ui_left, "end", "End Addr");
++      current_uiout->table_header (width, ui_left, "size", "Size");
++      current_uiout->table_header (width, ui_left, "offset", "Offset");
++      current_uiout->table_header (5, ui_left, "perms", "Perms");
++      current_uiout->table_header (0, ui_left, "objfile", "File");
++      current_uiout->table_body ();
++
++      mach_vm_address_t addr = 0;
++      while (true)
++	{
++	  mach_vm_size_t size = 0;
++	  /* Always descend to the leaf regions (e.g. the individual
++	     mappings of the dyld shared cache submap).  */
++	  natural_t depth = 1024;
++	  vm_region_submap_info_data_64_t info;
++	  mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
++
++	  kern_return_t kret
++	    = mach_vm_region_recurse (task, &addr, &size, &depth,
++				      (vm_region_recurse_info_t) &info,
++				      &count);
++	  if (kret != KERN_SUCCESS)
++	    break;
++
++	  char perms[5];
++	  perms[0] = (info.protection & VM_PROT_READ) ? 'r' : '-';
++	  perms[1] = (info.protection & VM_PROT_WRITE) ? 'w' : '-';
++	  perms[2] = (info.protection & VM_PROT_EXECUTE) ? 'x' : '-';
++	  perms[3] = (info.share_mode == SM_SHARED
++		      || info.share_mode == SM_TRUESHARED
++		      || info.share_mode == SM_SHARED_ALIASED) ? 's' : 'p';
++	  perms[4] = '\0';
++
++	  std::string name = darwin_region_name (pid, addr, info.user_tag);
++
++	  ui_out_emit_tuple tuple_emitter (current_uiout, nullptr);
++	  current_uiout->field_core_addr ("start", gdbarch, addr);
++	  current_uiout->field_core_addr ("end", gdbarch, addr + size);
++	  current_uiout->field_string ("size", paddress (gdbarch, size));
++	  current_uiout->field_string ("offset",
++				       paddress (gdbarch, info.offset));
++	  current_uiout->field_string ("perms", perms);
++	  current_uiout->field_string ("objfile", name.c_str (),
++				       file_name_style.style ());
++	  current_uiout->text ("\n");
++
++	  addr += size;
++	}
++    }
++
++  return true;
++}
++
+ const char *
+ darwin_nat_target::pid_to_exec_file (int pid)
+ {
+diff --git a/gdb/darwin-nat.h b/gdb/darwin-nat.h
+index 60c3adf..d7c1920 100644
+--- a/gdb/darwin-nat.h
++++ b/gdb/darwin-nat.h
+@@ -102,6 +102,8 @@ class darwin_nat_target : public inf_child_target
+ 
+   const char *pid_to_exec_file (int pid) override;
+ 
++  bool info_proc (const char *, enum info_proc_what) override;
++
+   enum target_xfer_status xfer_partial (enum target_object object,
+ 					const char *annex,
+ 					gdb_byte *readbuf,

@@ -1,0 +1,91 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pypi-for-pwndbg <pwndbg@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 02:59:53 +0100
+Subject: [PATCH] dyld cache: 64-bit symtab offsets, skip unknown optional load
+ commands
+
+Fixes loading the dylibs of the macOS 27 dyld shared cache:
+
+- All cache dylibs share one __LINKEDIT, up to 0x166168000 bytes past a
+  dylib's __TEXT. Once rebased to be relative to the dylib's header (see
+  the earlier dyld cache patches), LC_SYMTAB's symoff/stroff no longer
+  fit in 32 bits (up to 0x1909e8d00): stroff got truncated, which tripped
+  the BFD_ASSERTs in the (un)fixup helpers and made the shared strtab check
+  fail ("ffffffff2a884d00 (dylib) != 2a884d00 (ours)"). Make them
+  ufile_ptr.
+- The target-memory window for a cache dylib was 0xf00db000 bytes, too
+  small to reach that __LINKEDIT ("file truncated", and reading the
+  indirect symbol table while parsing LC_DYSYMTAB failed, so most dylibs
+  were "not in executable format"). Use 16 GiB; memory is read lazily.
+- Like dyld, ignore unknown load commands unless LC_REQ_DYLD is set
+  (macOS 27 uses 0x37 and 0x3a).
+---
+ bfd/mach-o.c       | 9 +++++++--
+ bfd/mach-o.h       | 7 +++++--
+ gdb/solib-darwin.c | 5 ++++-
+ 3 files changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/bfd/mach-o.c b/bfd/mach-o.c
+index cfe68e7..72d77c4 100644
+--- a/bfd/mach-o.c
++++ b/bfd/mach-o.c
+@@ -3743,7 +3743,7 @@ bfd_mach_o_read_symtab_symbol (bfd *abfd,
+   unsigned int wide = mach_o_wide_p (&mdata->header);
+   unsigned int symwidth =
+     wide ? BFD_MACH_O_NLIST_64_SIZE : BFD_MACH_O_NLIST_SIZE;
+-  unsigned int symoff = sym->symoff + (i * symwidth);
++  ufile_ptr symoff = sym->symoff + (i * symwidth);
+   struct mach_o_nlist_64_external raw;
+   unsigned char type = -1;
+   unsigned char section = -1;
+@@ -5208,9 +5208,14 @@ bfd_mach_o_read_command (bfd *abfd, bfd_mach_o_load_command *command,
+ 	return false;
+       break;
+     default:
++      /* Like dyld, ignore load commands we don't know unless they are
++	 marked as required (LC_REQ_DYLD): newer macOS versions keep adding
++	 them (e.g. 0x37 and 0x3a in the macOS 27 dyld shared cache).  */
++      if (!command->type_required)
++	break;
+       command->len = 0;
+       _bfd_error_handler (_("%pB: unknown load command %#x"),
+-			  abfd, command->type);
++			  abfd, command->type | BFD_MACH_O_LC_REQ_DYLD);
+       return false;
+     }
+ 
+diff --git a/bfd/mach-o.h b/bfd/mach-o.h
+index f2f151c..fa3bac6 100644
+--- a/bfd/mach-o.h
++++ b/bfd/mach-o.h
+@@ -148,9 +148,12 @@ bfd_mach_o_reloc_info;
+ 
+ typedef struct bfd_mach_o_symtab_command
+ {
+-  unsigned int symoff;
++  /* 64-bit: for a dylib in the dyld shared cache these are rebased to be
++     relative to the dylib's header, and the cache's shared __LINKEDIT can
++     be more than 4 GiB away from it.  */
++  ufile_ptr symoff;
+   unsigned int nsyms;
+-  unsigned int stroff;
++  ufile_ptr stroff;
+   unsigned int strsize;
+   bfd_mach_o_asymbol *symbols;
+   char *strtab;
+diff --git a/gdb/solib-darwin.c b/gdb/solib-darwin.c
+index dca8902..a900c04 100644
+--- a/gdb/solib-darwin.c
++++ b/gdb/solib-darwin.c
+@@ -709,7 +709,10 @@ darwin_solib_ops::bfd_open (const char *pathname,
+        * difficult without constructing this bfd object, which requires that
+        * LINKEDIT is within its boundaries. So, for now we resort to this hack
+        * where we give the memory view an unfathomable size. */
+-      gdb_bfd_ref_ptr res = solib_bfd_open_at (li->lm_addr, 0xf00db000);
++      /* The cache's shared __LINKEDIT can be more than 4 GiB past the
++	 dylib (0x166168000 on macOS 27), so the window must reach it;
++	 memory is only read on demand.  */
++      gdb_bfd_ref_ptr res = solib_bfd_open_at (li->lm_addr, 0x400000000);
+       mach_o_data_struct *mdata = bfd_mach_o_get_data (res);
+       mdata->dyld_cache_shared
+           = get_darwin_info (current_program_space)->dc_shared;

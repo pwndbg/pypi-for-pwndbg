@@ -1,0 +1,71 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:19 -0700
+Subject: [PATCH 06/14] bfd: Read arm64 mach-o start address for
+ LC_THREAD/LC_UNIXTHREAD
+
+---
+ bfd/mach-o.c            | 16 ++++++++++++++--
+ include/mach-o/loader.h | 17 +++++++++++++++++
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+
+diff --git a/bfd/mach-o.c b/bfd/mach-o.c
+index e9b6fc1..10f4a58 100644
+--- a/bfd/mach-o.c
++++ b/bfd/mach-o.c
+@@ -18,6 +18,7 @@
+    Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston,
+    MA 02110-1301, USA.  */
+ 
++#include "mach-o/loader.h"
+ #include "sysdep.h"
+ #include <limits.h>
+ #include "bfd.h"
+@@ -5216,8 +5217,19 @@ bfd_mach_o_scan_start_address (bfd *abfd)
+ 	      || bfd_read (buf, 8, abfd) != 8)
+ 	    return false;
+ 
+-	  abfd->start_address = bfd_h_get_64 (abfd, buf);
+-	}
++    abfd->start_address = bfd_h_get_64 (abfd, buf);
++  }
++      else if ((mdata->header.cputype == BFD_MACH_O_CPU_TYPE_ARM64)
++         && (thr->flavours[i].flavour == BFD_MACH_O_ARM_THREAD_STATE64))
++  {
++    unsigned char buf[8];
++
++    if (bfd_seek (abfd, thr->flavours[i].offset + (32 * 8), SEEK_SET) != 0
++        || bfd_read (buf, 8, abfd) != 8)
++      return false;
++
++    abfd->start_address = bfd_h_get_64 (abfd, buf);
++  }
+     }
+ 
+   return true;
+diff --git a/include/mach-o/loader.h b/include/mach-o/loader.h
+index f398097..66d1f75 100644
+--- a/include/mach-o/loader.h
++++ b/include/mach-o/loader.h
+@@ -456,4 +456,21 @@ typedef enum bfd_mach_o_i386_thread_flavour
+ }
+ bfd_mach_o_i386_thread_flavour;
+ 
++/* Defined in <mach/arm/thread_status.h> */
++typedef enum bfd_mach_o_arm_thread_flavour
++{
++  BFD_MACH_O_ARM_THREAD_STATE         = 1,
++  #define BFD_MACH_O_ARM_UNIFIED_THREAD_STATE BFD_MACH_O_ARM_THREAD_STATE
++  BFD_MACH_O_ARM_VFP_STATE            = 2,
++  BFD_MACH_O_ARM_EXCEPTION_STATE      = 3,
++  BFD_MACH_O_ARM_DEBUG_STATE          = 4,
++  BFD_MACH_O_ARM_THREAD_STATE_NONE    = 5,
++  BFD_MACH_O_ARM_THREAD_STATE64       = 6,
++  BFD_MACH_O_ARM_EXCEPTION_STATE64    = 7,
++  /* This name makes things confusing, so let's comment it out. */
++  // BFD_MACH_O_ARM_THREAD_STATE_LAST       = 8,
++  BFD_MACH_O_ARM_THREAD_STATE32       = 9,
++}
++bfd_mach_o_arm_thread_flavour;
++
+ #endif /* _MACH_O_LOADER_H */

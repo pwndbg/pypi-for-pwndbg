@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: pypi-for-pwndbg <pwndbg@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 03:10:33 +0100
+Subject: [PATCH 17/18] machoread: name __stubs entries as solib trampolines
+
+Record the entries of S_SYMBOL_STUBS sections as mst_solib_trampoline
+minimal symbols named after their target (from the indirect symbol
+table), sized like a stub, as is done for ELF PLT entries. BFD's
+synthetic symtab can't be used for this: it only knows the indirect
+symbols of a section when the assembler set them. Without them, a call
+into a dylib lands in an anonymous stub ("0x100001618 in ?? ()") and
+"next" stops there with "Cannot find bounds of current function".
+---
+ gdb/machoread.c | 60 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 60 insertions(+)
+
+diff --git a/gdb/machoread.c b/gdb/machoread.c
+index db4cc2d..667f4d7 100644
+--- a/gdb/machoread.c
++++ b/gdb/machoread.c
+@@ -137,6 +137,64 @@ macho_symtab_add_minsym (minimal_symbol_reader &reader,
+     }
+ }
+ 
++/* Name the entries of the symbol stub sections (S_SYMBOL_STUBS, e.g.
++   __TEXT,__stubs) after the symbols they jump to, as solib trampolines,
++   like the PLT entries of ELF files.  Without them a call into a dylib
++   lands in an anonymous stub, and "next" stops there ("Cannot find bounds
++   of current function").  */
++
++static void
++macho_symtab_add_stubs (minimal_symbol_reader &reader,
++			struct objfile *objfile)
++{
++  bfd *abfd = objfile->obfd.get ();
++  bfd_mach_o_data_struct *mdata = bfd_mach_o_get_data (abfd);
++  bfd_mach_o_symtab_command *symtab = mdata->symtab;
++  bfd_mach_o_dysymtab_command *dysymtab = mdata->dysymtab;
++
++  /* BFD's synthetic symtab can't be used: it only knows the indirect
++     symbols of a section when they were set by the assembler.  */
++  if (symtab == nullptr || symtab->symbols == nullptr
++      || dysymtab == nullptr || dysymtab->indirect_syms == nullptr)
++    return;
++
++  for (unsigned long i = 0; i < mdata->nsects; i++)
++    {
++      bfd_mach_o_section *sec = mdata->sections[i];
++
++      if ((sec->flags & BFD_MACH_O_SECTION_TYPE_MASK)
++	  != BFD_MACH_O_S_SYMBOL_STUBS
++	  || sec->reserved2 == 0 || sec->bfdsection == nullptr)
++	continue;
++
++      unsigned long nstubs = sec->size / sec->reserved2;
++      for (unsigned long j = 0; j < nstubs; j++)
++	{
++	  unsigned long k = sec->reserved1 + j;
++	  if (k >= dysymtab->nindirectsyms)
++	    break;
++
++	  /* Stripped local / absolute entries have no symbol.  */
++	  unsigned int isym = dysymtab->indirect_syms[k];
++	  if (isym >= symtab->nsyms)
++	    continue;
++
++	  const char *name = symtab->symbols[isym].symbol.name;
++	  if (name == nullptr || *name == '\0')
++	    continue;
++
++	  unrelocated_addr addr
++	    = unrelocated_addr (sec->addr + j * sec->reserved2);
++	  struct minimal_symbol *msym
++	    = reader.record_full (name, true, addr, mst_solib_trampoline,
++				  gdb_bfd_section_index (abfd,
++							 sec->bfdsection));
++	  if (msym != nullptr)
++	    msym->set_size (sec->reserved2);
++	}
++    }
++}
++
+ /* Build the minimal symbol table from SYMBOL_TABLE of length
+    NUMBER_OF_SYMBOLS for OBJFILE.  Registers OSO filenames found.  */
+ 
+@@ -821,6 +879,8 @@ macho_symfile_read (struct objfile *objfile, symfile_add_flags symfile_flags)
+ 	  macho_symtab_read (reader, objfile, symcount, symbol_table.data (),
+ 			     &oso_vector);
+ 
++	  macho_symtab_add_stubs (reader, objfile);
++
+ 	  reader.install ();
+ 	}
+ 
