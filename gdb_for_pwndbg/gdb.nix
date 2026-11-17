@@ -52,8 +52,13 @@ portableStdenv.mkDerivation (finalAttrs: {
     ./patches/enable-silent.patch
     ./patches/darwin-target-match.patch
     ./patches/enable-debuginfod.patch
-    # fix-gdb-colors.patch (bug 33748) was upstreamed in gdb 17.2; removed.
-  ];
+  ]
+  # Native aarch64-darwin support (Can Acar's "[PATCH 00/15] GDB: Initial AArch64-Darwin support",
+  # https://inbox.sourceware.org/gdb-patches/20251029200227.91464-1-canacar@imcan.dev/), rebased
+  # onto gdb 18.1: 02/15 is already upstream, 08/15 and 12/15 needed context fixes.
+  ++ lib.optionals (stdenv.hostPlatform.isDarwin && stdenv.hostPlatform.isAarch64) (
+    lib.sort (a: b: a < b) (lib.filesystem.listFilesRecursive ./patches/aarch64-darwin)
+  );
 
   postPatch = lib.optionalString stdenv.targetPlatform.isDarwin ''
     substituteInPlace gdb/darwin-nat.c \
@@ -164,13 +169,9 @@ portableStdenv.mkDerivation (finalAttrs: {
     "--disable-inprocess-agent"
     "--with-python=${python3.pythonOnBuildForHost.interpreter}"
     "--with-debuginfod=yes"
-  ]
-  ++ lib.optionals stdenv.targetPlatform.isDarwin [
-    "--target=x86_64-apple-darwin"
   ];
 
-  # --target is needed even for native builds (gdb picks its default target from it)
-  configurePlatforms = lib.optionals stdenv.targetPlatform.isLinux [
+  configurePlatforms = [
     "build"
     "host"
     "target"

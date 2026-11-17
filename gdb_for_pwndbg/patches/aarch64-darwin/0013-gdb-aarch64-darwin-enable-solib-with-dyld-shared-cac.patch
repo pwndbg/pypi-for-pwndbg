@@ -1,0 +1,113 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:26 -0700
+Subject: [PATCH 13/14] gdb/aarch64-darwin: enable solib with dyld shared cache
+ logic
+
+Accomplished by writing a glue tdep.
+---
+ gdb/Makefile.in           |  2 ++
+ gdb/aarch64-darwin-tdep.c | 57 +++++++++++++++++++++++++++++++++++++++
+ gdb/configure.tgt         |  5 ++++
+ 3 files changed, 64 insertions(+)
+ create mode 100644 gdb/aarch64-darwin-tdep.c
+
+diff --git a/gdb/Makefile.in b/gdb/Makefile.in
+index df006cc..f316a02 100644
+--- a/gdb/Makefile.in
++++ b/gdb/Makefile.in
+@@ -721,6 +721,7 @@ ALL_AMD_DBGAPI_TARGET_OBS = \
+ # (used with --enable-targets=all --enable-64-bit-bfd).
+ ALL_64_TARGET_OBS = \
+ 	aarch64-fbsd-tdep.o \
++	aarch64-darwin-tdep.o \
+ 	aarch64-linux-tdep.o \
+ 	aarch64-newlib-tdep.o \
+ 	aarch64-ravenscar-thread.o \
+@@ -1777,6 +1778,7 @@ ALLDEPFILES = \
+ 	arch/tic6x.c \
+ 	aarch32-tdep.c \
+ 	aarch64-darwin-nat.c \
++	aarch64-darwin-tdep.c \
+ 	aarch64-fbsd-nat.c \
+ 	aarch64-fbsd-tdep.c \
+ 	aarch64-linux-nat.c \
+diff --git a/gdb/aarch64-darwin-tdep.c b/gdb/aarch64-darwin-tdep.c
+new file mode 100644
+index 0000000..02dc447
+--- /dev/null
++++ b/gdb/aarch64-darwin-tdep.c
+@@ -0,0 +1,57 @@
++/* Darwin support for GDB, the GNU debugger.
++   Copyright (C) 1997-2025 Free Software Foundation, Inc.
++
++   Contributed by Can Acar.
++   Based on i386-darwin-tdep.c
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#include "frame.h"
++#include "inferior.h"
++#include "regcache.h"
++#include "osabi.h"
++#include "aarch64-tdep.h"
++#include "solib-darwin.h"
++#include "dwarf2/frame.h"
++
++
++static void
++aarch64_darwin_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
++{
++  aarch64_gdbarch_tdep *tdep = gdbarch_tdep<aarch64_gdbarch_tdep> (gdbarch);
++  // TODO...
++  set_gdbarch_make_solib_ops (gdbarch, make_darwin_solib_ops);
++}
++
++static enum gdb_osabi
++aarch64_mach_o_osabi_sniffer (bfd *abfd)
++{
++  if (!bfd_check_format (abfd, bfd_object))
++    return GDB_OSABI_UNKNOWN;
++
++  if (bfd_get_arch (abfd) == bfd_arch_aarch64)
++    return GDB_OSABI_DARWIN;
++
++  return GDB_OSABI_UNKNOWN;
++}
++
++INIT_GDB_FILE (aarch64_darwin_tdep)
++{
++  gdbarch_register_osabi_sniffer (bfd_arch_unknown, bfd_target_mach_o_flavour,
++                                  aarch64_mach_o_osabi_sniffer);
++  gdbarch_register_osabi (bfd_arch_aarch64, bfd_mach_aarch64, GDB_OSABI_DARWIN,
++                          aarch64_darwin_init_abi);
++}
+diff --git a/gdb/configure.tgt b/gdb/configure.tgt
+index 7313b31..15e9366 100644
+--- a/gdb/configure.tgt
++++ b/gdb/configure.tgt
+@@ -138,6 +138,11 @@ aarch64*-*-elf | aarch64*-*-rtems*)
+ 	gdb_target_obs="aarch64-newlib-tdep.o"
+ 	;;
+ 
++aarch64*-*-darwin*)
++	# Target: Darwin/aarch64
++	gdb_target_obs="aarch64-darwin-tdep.o solib-darwin.o"
++	;;
++
+ aarch64*-*-freebsd*)
+ 	# Target: FreeBSD/aarch64
+ 	gdb_target_obs="aarch64-fbsd-tdep.o"

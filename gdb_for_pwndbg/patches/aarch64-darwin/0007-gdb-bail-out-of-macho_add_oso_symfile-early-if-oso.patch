@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Tue, 17 Nov 2026 02:01:11 +0100
+Subject: [PATCH 07/14] gdb: bail out of macho_add_oso_symfile early if oso
+ doesn't contain symbols
+
+Rebased onto gdb 18.1 (gdb_bfd_check_format context).
+---
+ bfd/hash.c      | 2 ++
+ gdb/machoread.c | 5 +++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/bfd/hash.c b/bfd/hash.c
+index a53f7d7..72dd981 100644
+--- a/bfd/hash.c
++++ b/bfd/hash.c
+@@ -430,6 +430,8 @@ bfd_hash_table_init_n (struct bfd_hash_table *table,
+ {
+   unsigned long alloc;
+ 
++  BFD_ASSERT (size != 0);
++
+   alloc = size;
+   alloc *= sizeof (struct bfd_hash_entry *);
+   if (alloc / sizeof (struct bfd_hash_entry *) != size)
+diff --git a/gdb/machoread.c b/gdb/machoread.c
+index 352b8c2..db4cc2d 100644
+--- a/gdb/machoread.c
++++ b/gdb/machoread.c
+@@ -422,6 +422,11 @@ macho_add_oso_symfile (oso_el *oso, const gdb_bfd_ref_ptr &abfd,
+ 
+   macho_debug (0, _("Loading debugging symbols from oso: %s\n"), oso->name);
+ 
++  if (oso->nbr_syms == 0)
++    {
++      return;
++    }
++
+   if (!gdb_bfd_check_format (abfd.get (), bfd_object))
+     {
+       warning (_("`%s': can't read symbols: %s."), oso->name,

@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:16 -0700
+Subject: [PATCH 03/14] bfd: add more entries to dwarf_section_names_xlat for
+ mach-o binaries
+
+This lets bfd see more of the debug information, and enables gdb to
+successfully setup source-level debugging on newer macOS versions.
+---
+ bfd/mach-o.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/bfd/mach-o.c b/bfd/mach-o.c
+index 8318052..180dadb 100644
+--- a/bfd/mach-o.c
++++ b/bfd/mach-o.c
+@@ -202,6 +202,18 @@ static const mach_o_section_name_xlat dwarf_section_names_xlat[] =
+     {	".debug_gdb_scripts",		"__debug_gdb_scri",
+ 	SEC_DEBUGGING,			BFD_MACH_O_S_REGULAR,
+ 	BFD_MACH_O_S_ATTR_DEBUG,	0},
++    {	".debug_str_offsets",		"__debug_str_offs",
++	SEC_DEBUGGING,			BFD_MACH_O_S_REGULAR,
++	BFD_MACH_O_S_ATTR_DEBUG,	0},
++    {	".debug_addr",		"__debug_addr",
++	SEC_DEBUGGING,			BFD_MACH_O_S_REGULAR,
++	BFD_MACH_O_S_ATTR_DEBUG,	0},
++    {	".debug_line_str",		"__debug_line_str",
++	SEC_DEBUGGING,			BFD_MACH_O_S_REGULAR,
++	BFD_MACH_O_S_ATTR_DEBUG,	0},
++    {	".debug_rnglists",		"__debug_rnglists",
++	SEC_DEBUGGING,			BFD_MACH_O_S_REGULAR,
++	BFD_MACH_O_S_ATTR_DEBUG,	0},
+     { NULL, NULL, 0, 0, 0, 0}
+   };
+ 

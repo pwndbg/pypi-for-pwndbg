@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:27 -0700
+Subject: [PATCH 14/14] gdb: Add an entitlements xml for codesigning on macos
+
+---
+ gdb/Makefile.in      | 3 ++-
+ gdb/gdb.entitlements | 9 +++++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+ create mode 100644 gdb/gdb.entitlements
+
+diff --git a/gdb/Makefile.in b/gdb/Makefile.in
+index f316a02..8e3a061 100644
+--- a/gdb/Makefile.in
++++ b/gdb/Makefile.in
+@@ -2377,7 +2377,8 @@ gdb$(EXEEXT): gdb.o $(LIBGDB_OBS) $(CDEPS) $(TDEPLIBS)
+ 		-o gdb$(EXEEXT) gdb.o $(LIBGDB_OBS) \
+ 		$(TDEPLIBS) $(TUI_LIBRARY) $(CLIBS) $(LOADLIBES)
+ ifneq ($(CODESIGN_CERT),)
+-	$(ECHO_SIGN) $(CODESIGN) -s $(CODESIGN_CERT) gdb$(EXEEXT)
++	$(ECHO_SIGN) $(CODESIGN) -s $(CODESIGN_CERT) --entitlements \
++	$(srcdir)/gdb.entitlements gdb$(EXEEXT)
+ endif
+ 
+ # This is useful when debugging GDB, because some Unix's don't let you run GDB
+diff --git a/gdb/gdb.entitlements b/gdb/gdb.entitlements
+new file mode 100644
+index 0000000..963cd47
+--- /dev/null
++++ b/gdb/gdb.entitlements
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
++  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++  <key>com.apple.security.cs.debugger</key>
++  <true/>
++</dict>
++</plist>

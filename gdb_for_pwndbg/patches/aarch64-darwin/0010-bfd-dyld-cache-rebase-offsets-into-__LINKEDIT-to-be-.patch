@@ -1,0 +1,93 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:23 -0700
+Subject: [PATCH 10/14] bfd/dyld cache: rebase offsets into __LINKEDIT to be
+ relative to __TEXT
+
+Rebased onto gdb 18.1:
+- dropped the second definition of fixup_offset_for_shared_cache,
+  10/15 already adds it;
+- only fix up LC_DYSYMTAB's indirectsymoff for dylibs in the dyld cache
+  (BFD_MACH_O_MH_DYLIB_IN_CACHE), like LC_SYMTAB below; otherwise every
+  Mach-O file trips the BFD_ASSERT in fixup_offset_for_shared_cache.
+
+---
+ bfd/mach-o.c | 34 ++++++++++++++++++++++++++++++++++
+ bfd/mach-o.h |  5 +++++
+ 2 files changed, 39 insertions(+)
+
+diff --git a/bfd/mach-o.c b/bfd/mach-o.c
+index 7a33b13..cfe68e7 100644
+--- a/bfd/mach-o.c
++++ b/bfd/mach-o.c
+@@ -4463,6 +4463,13 @@ bfd_mach_o_read_dysymtab (bfd *abfd, bfd_mach_o_load_command *command,
+     cmd->nextrel = bfd_h_get_32 (abfd, raw.nextrel);
+     cmd->locreloff = bfd_h_get_32 (abfd, raw.locreloff);
+     cmd->nlocrel = bfd_h_get_32 (abfd, raw.nlocrel);
++
++    /* this needs to be handled here instead of after all LC's have been parsed
++     * because it is used later in this routine to read values from abfd. */
++    if (bfd_mach_o_get_data (abfd)->header.flags
++	& BFD_MACH_O_MH_DYLIB_IN_CACHE)
++      cmd->indirectsymoff
++	  = fixup_offset_for_shared_cache (abfd, cmd->indirectsymoff);
+   }
+ 
+   if (cmd->nmodtab != 0)
+@@ -5033,6 +5040,15 @@ bfd_mach_o_read_segment (bfd *abfd,
+ 	(seg, bfd_mach_o_get_mach_o_section (sec));
+     }
+ 
++  if (!strcmp (seg->segname, "__LINKEDIT"))
++    {
++      bfd_mach_o_get_data (abfd)->seg_linkedit = seg;
++    }
++  if (!strcmp (seg->segname, "__TEXT"))
++    {
++      bfd_mach_o_get_data (abfd)->seg_text = seg;
++    }
++
+   return true;
+ }
+ 
+@@ -5461,6 +5477,24 @@ bfd_mach_o_scan (bfd *abfd,
+ 	}
+     }
+ 
++  if (mdata->header.flags & BFD_MACH_O_MH_DYLIB_IN_CACHE)
++    {
++      for (bfd_mach_o_load_command *cmd = mdata->first_command; cmd != NULL;
++           cmd = cmd->next)
++        {
++          if (cmd->type == BFD_MACH_O_LC_SYMTAB)
++            {
++              cmd->command.symtab.stroff = fixup_offset_for_shared_cache (
++                  abfd, cmd->command.symtab.stroff);
++              cmd->command.symtab.symoff = fixup_offset_for_shared_cache (
++                  abfd, cmd->command.symtab.symoff);
++
++              BFD_ASSERT (cmd->command.symtab.stroff >= 0);
++              BFD_ASSERT (cmd->command.symtab.symoff >= 0);
++            }
++        }
++    }
++
+   /* Sections should be flatten before scanning start address.  */
+   if (!bfd_mach_o_flatten_sections (abfd))
+     return false;
+diff --git a/bfd/mach-o.h b/bfd/mach-o.h
+index 6e81b01..f2f151c 100644
+--- a/bfd/mach-o.h
++++ b/bfd/mach-o.h
+@@ -669,6 +669,11 @@ typedef struct mach_o_data_struct
+   /* BFD of .dSYM file.  */
+   bfd *dsym_bfd;
+ 
++  /* these are cached segments used for calculating mach-o-base relative
++   * offsets for bfd's in a dyld cache. */
++  bfd_mach_o_segment_command *seg_linkedit;
++  bfd_mach_o_segment_command *seg_text;
++
+   /* Holds data shared between dylibs in a dyld cache. Not used if the dylib
+    * is not a part of the dyld cache. */
+   bfd_mach_o_dyld_cache_shared_struct *dyld_cache_shared;

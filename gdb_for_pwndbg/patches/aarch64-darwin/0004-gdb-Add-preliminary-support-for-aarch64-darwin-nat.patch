@@ -1,0 +1,215 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:17 -0700
+Subject: [PATCH 04/14] gdb: Add preliminary support for aarch64-darwin-nat
+
+---
+ configure                |   2 +-
+ gdb/Makefile.in          |   1 +
+ gdb/aarch64-darwin-nat.c | 156 +++++++++++++++++++++++++++++++++++++++
+ gdb/configure.nat        |   4 +
+ 4 files changed, 162 insertions(+), 1 deletion(-)
+ create mode 100644 gdb/aarch64-darwin-nat.c
+
+diff --git a/configure b/configure
+index 8fbbc60..84abdbc 100755
+--- a/configure
++++ b/configure
+@@ -3935,7 +3935,7 @@ case "${target}" in
+   *-*-chorusos)
+     ;;
+   aarch64-*-darwin*)
+-    noconfigdirs="$noconfigdirs ld gas gdb gprof"
++    noconfigdirs="$noconfigdirs ld gas gprof"
+     noconfigdirs="$noconfigdirs sim target-rda"
+     ;;
+   amdgcn*-*-*)
+diff --git a/gdb/Makefile.in b/gdb/Makefile.in
+index 57f3841..df006cc 100644
+--- a/gdb/Makefile.in
++++ b/gdb/Makefile.in
+@@ -1776,6 +1776,7 @@ ALLDEPFILES = \
+ 	arch/riscv.c \
+ 	arch/tic6x.c \
+ 	aarch32-tdep.c \
++	aarch64-darwin-nat.c \
+ 	aarch64-fbsd-nat.c \
+ 	aarch64-fbsd-tdep.c \
+ 	aarch64-linux-nat.c \
+diff --git a/gdb/aarch64-darwin-nat.c b/gdb/aarch64-darwin-nat.c
+new file mode 100644
+index 0000000..20c08f8
+--- /dev/null
++++ b/gdb/aarch64-darwin-nat.c
+@@ -0,0 +1,156 @@
++/* Darwin support for GDB, the GNU debugger.
++   Copyright (C) 1997-2025 Free Software Foundation, Inc.
++
++   Contributed by Can Acar.
++   Based on i386-darwin-nat.c.
++
++   This file is part of GDB.
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3 of the License, or
++   (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
++
++#ifndef BFD64
++#error aarch64-darwin native support requires a 64-bit BFD, but it isn't.\
++How did this happen?
++#endif
++
++#include "arch-utils.h"
++#include "arch/aarch64.h"
++#include "gdbarch.h"
++#include "gdbcore.h"
++#include "inferior.h"
++#include "regcache.h"
++#include "target.h"
++#include "darwin-nat.h"
++#include "aarch64-nat.h"
++#include "aarch64-tdep.h"
++
++#include <mach/mach.h>
++#include <sys/ptrace.h>
++
++struct aarch64_darwin_nat_target final
++    : public aarch64_nat_target<darwin_nat_target>
++{
++  /* Add our register access methods.  */
++  void fetch_registers (struct regcache *, int) override;
++  void store_registers (struct regcache *, int) override;
++};
++
++static struct aarch64_darwin_nat_target darwin_target;
++
++/* Fill GDB's register array with the general-purpose register values
++   from the current thread.  */
++
++static void
++fetch_gregs_from_thread (struct regcache *regcache)
++{
++  int ret;
++  thread_t thread;
++  size_t regno;
++  arm_thread_state64_t regs;
++  kern_return_t kret;
++  mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
++
++  struct gdbarch *gdbarch = regcache->arch ();
++
++  thread = regcache->ptid ().tid ();
++
++  kret = thread_get_state (thread, ARM_THREAD_STATE64, (thread_state_t)&regs,
++                           &count);
++  if (kret != KERN_SUCCESS)
++    {
++      warning (_ ("darwin_set_sstep: error %x, thread=%x\n"), kret, thread);
++      return;
++    }
++
++  /* make sure that we're setting exactly the correct amount of data. */
++  static_assert (sizeof (regs.__x) / sizeof (regs.__x[0])
++                 == AARCH64_FP_REGNUM - AARCH64_X0_REGNUM);
++
++  for (regno = AARCH64_X0_REGNUM; regno < AARCH64_FP_REGNUM; regno++)
++    regcache->raw_supply (regno, &regs.__x[regno - AARCH64_X0_REGNUM]);
++  regcache->raw_supply (AARCH64_FP_REGNUM, &regs.__fp);
++  regcache->raw_supply (AARCH64_LR_REGNUM, &regs.__lr);
++  regcache->raw_supply (AARCH64_SP_REGNUM, &regs.__sp);
++  regcache->raw_supply (AARCH64_PC_REGNUM, &regs.__pc);
++  regcache->raw_supply (AARCH64_CPSR_REGNUM, &regs.__cpsr);
++}
++
++void
++aarch64_darwin_nat_target::fetch_registers (struct regcache *regcache,
++                                            int regno)
++{
++  if (regno < AARCH64_V0_REGNUM)
++    {
++      fetch_gregs_from_thread (regcache);
++    }
++}
++
++void
++aarch64_darwin_nat_target::store_registers (struct regcache *, int regno)
++{
++  error (_ ("User on aarch64 darwin native wanted to write regs: %d\n\
++However, this is not implemented yet."),
++         regno);
++}
++
++void
++darwin_check_osabi (darwin_inferior *inf, thread_t thread)
++{
++  gdbarch_info info;
++  gdbarch_info_fill (&info);
++  info.byte_order = gdbarch_byte_order (current_inferior ()->arch ());
++  info.osabi = GDB_OSABI_DARWIN;
++  info.bfd_arch_info = bfd_lookup_arch (bfd_arch_aarch64, bfd_mach_aarch64);
++  gdbarch_update_p (current_inferior (), info);
++}
++
++void
++aarch64_notify_debug_reg_change (ptid_t ptid, int is_watchpoint,
++                                 unsigned int idx)
++{
++  gdb_assert_not_reached ("this function is not implemented yet.");
++}
++
++#define ARM64_MDSCR_EL1_SS 0b1
++
++/* This function does not handle the case for sigreturn. It's only a basic
++ * initial implementation. */
++void
++darwin_set_sstep (thread_t thread, int enable)
++{
++  arm_debug_state64_t dbg_state;
++  unsigned int count = ARM_DEBUG_STATE64_COUNT;
++  kern_return_t kret;
++
++  kret = thread_get_state (thread, ARM_DEBUG_STATE64,
++                           (thread_state_t)&dbg_state, &count);
++  if (kret != KERN_SUCCESS)
++    {
++      warning (_ ("darwin_set_sstep: error %x, thread=%x\n"), kret, thread);
++      return;
++    }
++
++  __uint64_t bit = enable ? ARM64_MDSCR_EL1_SS : 0;
++
++  dbg_state.__mdscr_el1 = (dbg_state.__mdscr_el1 & ~ARM64_MDSCR_EL1_SS) | bit;
++  kret = thread_set_state (thread, ARM_DEBUG_STATE64,
++                           (thread_state_t)&dbg_state, count);
++
++  MACH_CHECK_ERROR (kret);
++}
++
++INIT_GDB_FILE (aarch64_darwin_nat)
++{ 
++  add_inf_child_target (&darwin_target);
++}
+diff --git a/gdb/configure.nat b/gdb/configure.nat
+index 4f5c161..27b6c66 100644
+--- a/gdb/configure.nat
++++ b/gdb/configure.nat
+@@ -154,6 +154,10 @@ case ${gdb_host} in
+ 		NATDEPFILES="${NATDEPFILES} i386-darwin-nat.o x86-nat.o \
+ 		    nat/x86-dregs.o amd64-nat.o"
+ 		;;
++	    aarch64)
++		# Host: AArch64 running Darwin
++		NATDEPFILES="${NATDEPFILES} aarch64-darwin-nat.o aarch64-nat.o nat/aarch64-hw-point.o"
++		;;
+ 	esac
+ 	;;
+     fbsd)

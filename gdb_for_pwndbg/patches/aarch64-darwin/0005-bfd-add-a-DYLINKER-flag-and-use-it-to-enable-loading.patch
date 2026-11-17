@@ -1,0 +1,70 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:18 -0700
+Subject: [PATCH 05/14] bfd: add a DYLINKER flag and use it to enable loading
+ symbols for dyld into gdb
+
+---
+ bfd/bfd-in2.h   | 4 ++++
+ bfd/bfd.c       | 4 ++++
+ bfd/mach-o.c    | 3 +++
+ gdb/machoread.c | 2 +-
+ 4 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/bfd/bfd-in2.h b/bfd/bfd-in2.h
+index e55bde7..a153047 100644
+--- a/bfd/bfd-in2.h
++++ b/bfd/bfd-in2.h
+@@ -2114,6 +2114,10 @@ struct bfd
+   /* Don't generate ELF section header.  */
+ #define BFD_NO_SECTION_HEADER  0x800000
+ 
++  /* BFD is a dynamic linker.  */
++#define DYLINKER              0x1000000
++
++
+   /* Flags bits which are for BFD use only.  */
+ #define BFD_FLAGS_FOR_BFD_USE_MASK \
+   (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_LINKER_CREATED \
+diff --git a/bfd/bfd.c b/bfd/bfd.c
+index cbeaeb6..88574d8 100644
+--- a/bfd/bfd.c
++++ b/bfd/bfd.c
+@@ -227,6 +227,10 @@ CODE_FRAGMENT
+ .  {* Don't generate ELF section header.  *}
+ .#define BFD_NO_SECTION_HEADER	0x800000
+ .
++.  {* BFD is a dynamic linker.  *}
++.#define DYLINKER              0x1000000
++.
++.
+ .  {* Flags bits which are for BFD use only.  *}
+ .#define BFD_FLAGS_FOR_BFD_USE_MASK \
+ .  (BFD_IN_MEMORY | BFD_COMPRESS | BFD_DECOMPRESS | BFD_LINKER_CREATED \
+diff --git a/bfd/mach-o.c b/bfd/mach-o.c
+index 180dadb..e9b6fc1 100644
+--- a/bfd/mach-o.c
++++ b/bfd/mach-o.c
+@@ -5268,6 +5268,9 @@ bfd_mach_o_scan (bfd *abfd,
+     case BFD_MACH_O_MH_BUNDLE:
+       abfd->flags |= DYNAMIC;
+       break;
++    case BFD_MACH_O_MH_DYLINKER:
++      abfd->flags |= DYLINKER;
++      break;
+     }
+ 
+   bfd_mach_o_convert_architecture (header->cputype, header->cpusubtype,
+diff --git a/gdb/machoread.c b/gdb/machoread.c
+index d273ec2..352b8c2 100644
+--- a/gdb/machoread.c
++++ b/gdb/machoread.c
+@@ -786,7 +786,7 @@ macho_symfile_read (struct objfile *objfile, symfile_add_flags symfile_flags)
+   /* Get symbols from the symbol table only if the file is an executable.
+      The symbol table of object files is not relocated and is expected to
+      be in the executable.  */
+-  if (bfd_get_file_flags (abfd) & (EXEC_P | DYNAMIC))
++  if (bfd_get_file_flags (abfd) & (EXEC_P | DYNAMIC | DYLINKER))
+     {
+       std::string dsym_filename;
+ 

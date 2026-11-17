@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Can Acar <canacar@imcan.dev>
+Date: Wed, 29 Oct 2025 13:02:13 -0700
+Subject: [PATCH 01/14] libbacktrace: recognize MACH_O_MH_BUNDLE as an
+ executable file type
+
+---
+ libbacktrace/macho.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libbacktrace/macho.c b/libbacktrace/macho.c
+index b485634..a094122 100644
+--- a/libbacktrace/macho.c
++++ b/libbacktrace/macho.c
+@@ -92,6 +92,7 @@ struct macho_header_fat
+ 
+ #define MACH_O_MH_EXECUTE	0x02
+ #define MACH_O_MH_DYLIB		0x06
++#define MACH_O_MH_BUNDLE 0x08
+ #define MACH_O_MH_DSYM		0x0a
+ 
+ /* A component of a fat file.  A fat file starts with a
+@@ -1059,6 +1060,7 @@ macho_add (struct backtrace_state *state, const char *filename, int descriptor,
+     case MACH_O_MH_EXECUTE:
+     case MACH_O_MH_DYLIB:
+     case MACH_O_MH_DSYM:
++    case MACH_O_MH_BUNDLE:
+       break;
+     default:
+       error_callback (data, "executable file is not an executable", 0);
