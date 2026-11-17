@@ -64,6 +64,7 @@ let
         ]
         ++ lib.optionals stdenv.hostPlatform.isDarwin [
           darwin.cctools
+          darwin.sigtool
         ];
         env.IS_LINUX = if stdenv.hostPlatform.isLinux then "1" else "0";
         env.BUILD_DEBUG_TARBALL = "0";
@@ -139,6 +140,11 @@ let
         if [ "$IS_LINUX" -eq 1 ]; then
             llvm-strip ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
             nuke-refs ./src/gdb_for_pwndbg/_vendor/bin/gdbserver
+        else
+            # install_name_tool, llvm-strip and nuke-refs invalidate the signature.
+            # Re-sign ad-hoc with the debugger entitlement, so that gdb can get the
+            # task port of the inferior (task_for_pid) without root.
+            codesign -f -s - --entitlements ${./gdb.entitlements} ./src/gdb_for_pwndbg/_vendor/bin/gdb
         fi
 
         python3 ${./verify.py} ${stdenv.targetPlatform.system} ${gdb_drv.pythonVersion} ./src/gdb_for_pwndbg/_vendor/bin/gdb

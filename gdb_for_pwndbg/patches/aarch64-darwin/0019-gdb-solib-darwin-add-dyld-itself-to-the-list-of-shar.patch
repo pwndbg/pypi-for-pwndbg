@@ -1,0 +1,181 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Patryk Sondej <patryk.sondej@grupawp.pl>
+Date: Tue, 17 Nov 2026 11:05:04 +0100
+Subject: [PATCH 19/19] gdb/solib-darwin: add dyld itself to the list of shared
+ libraries
+
+dyld does not list itself in dyld_all_image_infos.infoArray (at least
+since dyld4), so GDB never loaded its symbols, e.g.
+dyld_all_image_infos. Add it from dyldImageLoadAddress, like LLDB does.
+When dyld is loaded from the shared cache, it goes through the same
+in-memory path as the other cached images.
+
+dyld starts from /usr/lib/dyld on disk and then switches to its copy in
+the shared cache under the same name, so also compare load addresses in
+darwin_solib_ops::same, otherwise the stale on-disk entry is kept.
+
+At that point dyld has not filled in sharedCacheBaseAddress and
+sharedCacheSlide yet, so detect that dyld is in the shared cache from
+the MH_DYLIB_IN_CACHE header flag, and relocate cached images by their
+own slide (load address minus the unslid address of their first
+segment) instead of relying on sharedCacheSlide.
+---
+ gdb/solib-darwin.c | 90 ++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 88 insertions(+), 2 deletions(-)
+
+diff --git a/gdb/solib-darwin.c b/gdb/solib-darwin.c
+index a900c04..5681dd6 100644
+--- a/gdb/solib-darwin.c
++++ b/gdb/solib-darwin.c
+@@ -48,6 +48,7 @@ struct darwin_solib_ops : public solib_ops
+   owning_intrusive_list<solib> current_sos () const override;
+   gdb_bfd_ref_ptr bfd_open (const char *pathname,
+                             const lm_info_up &lm_info) const override;
++  bool same (const solib &gdb, const solib &inferior) const override;
+ };
+ 
+ /* See solib-darwin.h.  */
+@@ -80,12 +81,18 @@ struct gdb_dyld_all_image_infos
+   CORE_ADDR info;
+   /* Notifier (function called when a library is added or removed).  */
+   CORE_ADDR notifier;
++  /* Address of dyld's own Mach-O header (version >= 2).  */
++  CORE_ADDR dyld_image_load_address;
+   CORE_ADDR dyld_cache_slide;
+   CORE_ADDR dyld_cache_start;
+   /* TODO: compute and use this */
+   CORE_ADDR dyld_cache_end;
+ };
+ 
++/* Mach-O header flag set on images that are part of the dyld shared
++   cache (MH_DYLIB_IN_CACHE in <mach-o/loader.h>).  */
++#define DARWIN_MH_DYLIB_IN_CACHE 0x80000000
++
+ /* Current all_image_infos version.  */
+ #define DYLD_VERSION_MIN 1
+ #define DYLD_VERSION_MAX 17
+@@ -171,6 +178,12 @@ darwin_load_image_infos (struct darwin_info *info)
+   info->all_image.notifier
+       = extract_typed_address (buf + 8 + ptr_length, ptr_type);
+ 
++  if (info->all_image.version >= 2)
++    info->all_image.dyld_image_load_address = extract_typed_address (
++        buf + 8 + 2 * ptr_length + align_up (2, ptr_length), ptr_type);
++  else
++    info->all_image.dyld_image_load_address = 0;
++
+   if (info->all_image.version >= 15)
+     {
+       info->all_image.dyld_cache_slide = extract_typed_address (
+@@ -307,6 +320,8 @@ darwin_solib_ops::current_sos () const
+   image_info_size = ptr_len * 3;
+ 
+   owning_intrusive_list<solib> sos;
++  CORE_ADDR dyld_addr = info->all_image.dyld_image_load_address;
++  bool dyld_listed = false;
+ 
+   /* Read infos for each solib.
+      The first entry was rumored to be the executable itself, but this is not
+@@ -342,6 +357,9 @@ darwin_solib_ops::current_sos () const
+       if (hdr_val == BFD_MACH_O_MH_EXECUTE)
+ 	continue;
+ 
++      if (load_addr == dyld_addr)
++	dyld_listed = true;
++
+       gdb::unique_xmalloc_ptr<char> file_path
+ 	= target_read_string (path_addr, SO_NAME_MAX_PATH_SIZE - 1);
+       if (file_path == nullptr)
+@@ -359,6 +377,47 @@ darwin_solib_ops::current_sos () const
+                         file_path.get (), file_path.get (), *this);
+     }
+ 
++  /* dyld does not list itself in the image info array (at least since
++     dyld4), so add it from dyldImageLoadAddress, like LLDB does.  This
++     makes its symbols, e.g. dyld_all_image_infos, available.  */
++  if (dyld_addr != 0 && !dyld_listed)
++    {
++      struct mach_o_header_external hdr;
++      unsigned long hdr_val;
++
++      if (target_read_memory (dyld_addr, (gdb_byte *) &hdr, sizeof (hdr) - 4)
++	  == 0)
++	{
++	  hdr_val = extract_unsigned_integer (hdr.magic, sizeof (hdr.magic),
++					      byte_order);
++	  bool magic_ok = (hdr_val == BFD_MACH_O_MH_MAGIC
++			   || hdr_val == BFD_MACH_O_MH_MAGIC_64);
++	  hdr_val = extract_unsigned_integer (hdr.filetype,
++					      sizeof (hdr.filetype), byte_order);
++	  unsigned long hdr_flags = extract_unsigned_integer
++	    (hdr.flags, sizeof (hdr.flags), byte_order);
++
++	  if (magic_ok && hdr_val == BFD_MACH_O_MH_DYLINKER)
++	    {
++	      const char *dyld_path = find_program_interpreter ();
++	      if (dyld_path == nullptr)
++		dyld_path = "/usr/lib/dyld";
++
++	      /* dyld switches to its copy in the shared cache before it
++		 fills in sharedCacheBaseAddress, so the cache range is not
++		 known yet at that point.  Use the header flag instead.  */
++	      lm_info_darwin lm_info (dyld_addr);
++	      if ((hdr_flags & DARWIN_MH_DYLIB_IN_CACHE) != 0
++		  || (info->all_image.dyld_cache_start != 0
++		      && dyld_addr >= info->all_image.dyld_cache_start))
++		lm_info.in_dyld_cache = 1;
++
++	      sos.emplace_back (std::make_unique<lm_info_darwin> (lm_info),
++				dyld_path, dyld_path, *this);
++	    }
++	}
++    }
++
+   return sos;
+ }
+ 
+@@ -665,8 +724,17 @@ darwin_solib_ops::relocate_section_addresses (solib &so,
+   CORE_ADDR dyld_cache_slide;
+   if (li->in_dyld_cache)
+     {
+-      dyld_cache_slide = get_darwin_info (current_program_space)
+-                             ->all_image.dyld_cache_slide;
++      /* Prefer the slide of this image itself (its load address minus the
++	 unslid address of its first segment), as the shared cache slide in
++	 dyld_all_image_infos may not be filled in yet, e.g. when dyld has
++	 just switched to its copy in the shared cache.  */
++      CORE_ADDR base
++	= bfd_mach_o_get_base_address (sec->the_bfd_section->owner);
++      if (base != 0)
++	dyld_cache_slide = li->lm_addr - base;
++      else
++	dyld_cache_slide = get_darwin_info (current_program_space)
++			     ->all_image.dyld_cache_slide;
+       sec->addr = sec->the_bfd_section->lma + dyld_cache_slide;
+       sec->endaddr = sec->addr + sec->the_bfd_section->size;
+     }
+@@ -696,6 +764,24 @@ darwin_solib_ops::relocate_section_addresses (solib &so,
+     so.addr_low = sec->addr;
+ }
+ 
++/* Besides the name, also compare the load address.  dyld starts from
++   /usr/lib/dyld on disk and then switches to its copy in the shared cache,
++   keeping the same name, so comparing only names would keep the stale
++   entry.  */
++
++bool
++darwin_solib_ops::same (const solib &gdb, const solib &inferior) const
++{
++  if (!solib_ops::same (gdb, inferior))
++    return false;
++
++  auto *gdb_li = gdb::checked_static_cast<lm_info_darwin *> (gdb.lm_info.get ());
++  auto *inf_li
++    = gdb::checked_static_cast<lm_info_darwin *> (inferior.lm_info.get ());
++
++  return gdb_li->lm_addr == inf_li->lm_addr;
++}
++
+ gdb_bfd_ref_ptr
+ darwin_solib_ops::bfd_open (const char *pathname,
+                             const lm_info_up &lm_info) const
